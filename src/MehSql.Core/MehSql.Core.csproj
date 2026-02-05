@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>MehSql.Core</AssemblyName>
+    <RootNamespace>MehSql.Core</RootNamespace>
+  </PropertyGroup>
+</Project>

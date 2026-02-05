@@ -1,0 +1,10 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="MehSql.App.Views.MainWindow"
+        Width="1000" Height="700"
+        Title="MehSQL">
+  <Grid RowDefinitions="Auto,*">
+    <TextBlock Margin="12" FontSize="20" Text="MehSQL — it's fine."/>
+    <TextBlock Grid.Row="1" Margin="12" Text="Scaffold UI. Next: query editor + results grid."/>
+  </Grid>
+</Window>
