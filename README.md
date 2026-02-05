@@ -9,7 +9,7 @@
     <a href="#development">Development</a> •
     <a href="#license">License</a>
   </p>
-  <img src="https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet" alt=".NET 8">
+  <img src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet" alt=".NET 10">
   <img src="https://img.shields.io/badge/Avalonia-UI-8B5CF6?logo=avalonia" alt="Avalonia UI">
   <img src="https://img.shields.io/badge/Apache%202.0-blue.svg" alt="Apache 2.0">
 </div>
@@ -32,7 +32,7 @@
 
 ### Prerequisites
 
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/download) or later
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later
 - DecentDB (embedded database engine)
 
 ### From Source
@@ -132,25 +132,7 @@ Please ensure:
 
 ## License
 
-MehSQL is licensed under the [Apache License 2.0](LICENSE.txt).
-
-```
-Copyright 2026 Steven Hildreth
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-```
-
----
+Apache-2.0. See [LICENSE](LICENSE).
 
 <div align="center">
   <p><strong>Built with ❤️ for developers who just want to query some data.</strong></p>
