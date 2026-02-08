@@ -17,14 +17,15 @@
     <!-- Menu Bar -->
     <Menu Grid.Row="0">
       <MenuItem Header="_File">
-        <MenuItem Header="_New Connection"/>
-        <MenuItem Header="_Exit"/>
+        <MenuItem Header="_New Connection" InputGesture="Ctrl+N"/>
+        <Separator/>
+        <MenuItem Header="E_xit" InputGesture="Alt+F4"/>
       </MenuItem>
       <MenuItem Header="_Edit">
-        <MenuItem Header="_Preferences"/>
+        <MenuItem Header="_Preferences" InputGesture="Ctrl+,"/>
       </MenuItem>
       <MenuItem Header="_View">
-        <MenuItem Header="_Refresh"/>
+        <MenuItem Header="_Refresh" InputGesture="F5" Command="{Binding RunQueryCommand}"/>
       </MenuItem>
       <MenuItem Header="_Help">
         <MenuItem Header="_About"/>
@@ -79,9 +80,14 @@
                      FontFamily="Consolas, Monaco, monospace"
                      FontSize="13"
                      Padding="8"
-                     Watermark="Enter your SQL query here..."
+                     Watermark="Enter your SQL query here... (F5 to Run)"
                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+              <TextBox.KeyBindings>
+                <KeyBinding Gesture="F5" Command="{Binding RunQueryCommand}"/>
+                <KeyBinding Gesture="Ctrl+Shift+C" Command="{Binding CancelQueryCommand}"/>
+              </TextBox.KeyBindings>
+            </TextBox>
           </Border>
         </Grid>
 
@@ -119,14 +125,20 @@
           <!-- Results/Explain Tab Control -->
           <TabControl Grid.Row="2">
             <TabItem Header="Results">
-              <Grid RowDefinitions="Auto,*">
+              <Grid RowDefinitions="Auto,Auto,*">
+                <!-- Results Toolbar -->
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Background="#eee">
-                  <TextBlock Grid.Column="0" Text="Query Results" FontWeight="Bold" Padding="8"/>
-                  <TextBlock Grid.Column="1" Text="{Binding Results.Rows.Count, StringFormat='{}{0} rows'}" Padding="8" Opacity="0.6"/>
+                  <TextBlock Grid.Column="0" Text="Query Results" FontWeight="Bold" Padding="8" VerticalAlignment="Center"/>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="4">
+                    <Button Content="Export CSV" Click="OnExportCsvClick" Padding="8,2" FontSize="11" IsEnabled="{Binding !Results.IsExporting}"/>
+                    <Button Content="Export JSON" Click="OnExportJsonClick" Padding="8,2" FontSize="11" IsEnabled="{Binding !Results.IsExporting}"/>
+                    <TextBlock Text="{Binding Results.ExportStatus}" VerticalAlignment="Center" Margin="8,0" FontSize="11" Opacity="0.7"/>
+                  </StackPanel>
                 </Grid>
+                <TextBlock Grid.Row="1" Text="{Binding Results.Rows.Count, StringFormat='{}{0} rows'}" Padding="8,4" Background="#f5f5f5" Opacity="0.7" FontSize="11"/>
                 
                 <!-- Results DataGrid with Virtualization -->
-                <Border Grid.Row="1" BorderBrush="#ddd" BorderThickness="0,1,0,0">
+                <Border Grid.Row="2" BorderBrush="#ddd" BorderThickness="0,1,0,0">
                   <DataGrid ItemsSource="{Binding Results.Rows}"
                             AutoGenerateColumns="True"
                             IsReadOnly="True"

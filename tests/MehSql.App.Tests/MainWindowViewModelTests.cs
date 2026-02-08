@@ -50,11 +50,8 @@ public class MainWindowViewModelTests
         // Arrange
         var mockFactory = new Mock<IConnectionFactory>();
         var vm = new MainWindowViewModel(mockFactory.Object);
-        var propertyChanged = false;
-        vm.PropertyChanged += (s, e) => { if (e.PropertyName == nameof(vm.IsExecuting)) propertyChanged = true; };
 
-        // Act - Note: IsExecuting is private set, so we test via RunQueryAsync
-        // But we can verify the initial state and that it implements the property
+        // Act - Verify the property exists and is initially false
         var initialValue = vm.IsExecuting;
 
         // Assert

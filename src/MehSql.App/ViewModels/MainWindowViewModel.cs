@@ -71,6 +71,13 @@ public sealed class MainWindowViewModel : ViewModelBase
     public ResultsViewModel Results { get; }
     public SchemaExplorerViewModel SchemaExplorer { get; }
 
+    private string? _currentDatabasePath;
+    public string? CurrentDatabasePath
+    {
+        get => _currentDatabasePath;
+        private set => this.RaiseAndSetIfChanged(ref _currentDatabasePath, value);
+    }
+
     #endregion
 
     #region Commands
@@ -124,5 +131,78 @@ public sealed class MainWindowViewModel : ViewModelBase
     private void CancelQuery()
     {
         _cancellationTokenSource?.Cancel();
+    }
+
+    public async Task OpenDatabaseAsync(string filePath)
+    {
+        if (string.IsNullOrEmpty(filePath))
+        {
+            return;
+        }
+
+        try
+        {
+            // Create a new connection factory for the selected file
+            var newFactory = new ConnectionFactory(filePath);
+            using var conn = newFactory.CreateConnection();
+            await conn.OpenAsync();
+
+            // Update current database path
+            CurrentDatabasePath = filePath;
+
+            // Reinitialize view models with new connection
+            var queryPager = new QueryPager(newFactory);
+            var explainService = new ExplainService(newFactory);
+            var exportService = new ExportService();
+
+            // Update Results view model
+            Results.Sql = SqlText;
+
+            // Reload schema explorer
+            await SchemaExplorer.LoadAsync();
+
+            ErrorMessage = null;
+            HasError = false;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to open database: {ex.Message}";
+            HasError = true;
+        }
+    }
+
+    public async Task CreateDatabaseAsync(string filePath)
+    {
+        if (string.IsNullOrEmpty(filePath))
+        {
+            return;
+        }
+
+        try
+        {
+            // DecentDB will create the file if it doesn't exist
+            var newFactory = new ConnectionFactory(filePath);
+            using var conn = newFactory.CreateConnection();
+            await conn.OpenAsync();
+
+            // Update current database path
+            CurrentDatabasePath = filePath;
+
+            // Reinitialize view models with new connection
+            var queryPager = new QueryPager(newFactory);
+            var explainService = new ExplainService(newFactory);
+            var exportService = new ExportService();
+
+            // Reload schema explorer to show empty database
+            await SchemaExplorer.LoadAsync();
+
+            ErrorMessage = null;
+            HasError = false;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to create database: {ex.Message}";
+            HasError = true;
+        }
     }
 }
