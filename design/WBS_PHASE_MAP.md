@@ -4,11 +4,12 @@
 - [X] Phase 0 – Project Scaffold & CI
 - [X] Phase 1 – Core Query Execution + Timing
 - [X] Phase 2 – Basic UI: Editor + Run/Cancel + Errors
-- [ ] Phase 3 – Virtualized Results + Paging + Cache
+- [X] Phase 3 – Virtualized Results + Paging + Cache
 - [ ] Phase 4 – Schema Browser
 - [ ] Phase 5 – Explain/Analyze + Performance Panel
 - [ ] Phase 6 – Exports + Polishing
-
+- [ ] Phase 7 - Open, New and Drag & Drop
+- 
 ---
 
 ## Phase 0 – Project Scaffo~~~~ld & CI
@@ -67,10 +68,12 @@
 - **Performance Panel**: Bottom panel showing DB execution time, fetch time, row count
 
 ## Phase 3 – Virtualized Results + Paging
-- Paging abstraction in Core
-- ResultsViewModel that loads pages as needed
-- Cache last N pages
-- No UI thread blocking
+- [X] Paging abstraction in Core (CachedQueryPager with LRU eviction)
+- [X] ResultsViewModel that loads pages as needed
+- [X] Cache last N pages (configurable via QueryOptions.MaxCachedPages)
+- [X] No UI thread blocking (async/await throughout)
+- [X] Cache statistics and hit tracking
+- [X] Non-deterministic ordering warning UI
 
 ## Phase 4 – Schema Browser
 - Introspection queries
@@ -78,9 +81,14 @@
 
 ## Phase 5 – Explain/Analyze + Performance Panel
 - Explain/Analyze tab
-- Timing breakdown panel (DB vs fetch vs UI)
+- Timing breakdown panel (DB vs fetch vs UI)~~~~
 
 ## Phase 6 – Export + Polish
 - Streaming export CSV/JSON
 - Preferences (theme, page size)
 - Keyboard shortcuts
+
+## Phase 7 - Open, New and Drag & Drop
+- Be able to use File -> Open to open an existing DecentDB File (*.ddb)
+- Be able to use File -> New to create a new DecentDB File (*.ddb)
+- Be able to drag a DecentDB File (*.ddb) onto the app to open it

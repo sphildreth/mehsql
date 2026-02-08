@@ -42,7 +42,21 @@ public sealed class ResultsViewModel : ViewModelBase
         private set => this.RaiseAndSetIfChanged(ref _isBusy, value);
     }
 
+    private bool _hasOrderingWarning;
+    public bool HasOrderingWarning
+    {
+        get => _hasOrderingWarning;
+        private set => this.RaiseAndSetIfChanged(ref _hasOrderingWarning, value);
+    }
+
     public string Sql { get; set; } = "SELECT 1;";
+
+    private static bool DetectOrdering(string sql)
+    {
+        if (string.IsNullOrWhiteSpace(sql)) return false;
+        var normalized = sql.Replace("\n", " ").Replace("\r", " ").Replace("\t", " ");
+        return normalized.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase);
+    }
 
     public async Task RunAsync(CancellationToken ct)
     {
@@ -51,7 +65,7 @@ public sealed class ResultsViewModel : ViewModelBase
         {
             Rows.Clear();
             var page = await _pager.ExecuteFirstPageAsync(Sql, new QueryOptions(), ct);
-            Apply(page);
+            Apply(page, isFirstPage: true);
         }
         finally { IsBusy = false; }
     }
@@ -63,16 +77,20 @@ public sealed class ResultsViewModel : ViewModelBase
         try
         {
             var page = await _pager.ExecuteNextPageAsync(Sql, new QueryOptions(), _nextToken, ct);
-            Apply(page);
+            Apply(page, isFirstPage: false);
         }
         finally { IsBusy = false; }
     }
 
-    private void Apply(QueryPage page)
+    private void Apply(QueryPage page, bool isFirstPage)
     {
         Columns = page.Columns;
         Timings = page.Timings;
         _nextToken = page.NextToken;
         foreach (var r in page.Rows) Rows.Add(r);
+        if (isFirstPage)
+        {
+            HasOrderingWarning = !DetectOrdering(Sql);
+        }
     }
 }

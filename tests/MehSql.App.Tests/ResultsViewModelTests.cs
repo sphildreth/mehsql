@@ -77,4 +77,64 @@ public sealed class ResultsViewModelTests
         await vm.LoadMoreAsync(CancellationToken.None);
         Assert.Equal(3, vm.Rows.Count);
     }
+
+    [Fact]
+    public async Task RunAsync_WithoutOrderBy_SetsOrderingWarning()
+    {
+        var pager = new Mock<IQueryPager>(MockBehavior.Strict);
+        pager.Setup(p => p.ExecuteFirstPageAsync(It.IsAny<string>(), It.IsAny<QueryOptions>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new QueryPage(
+                 Columns: new[] { new ColumnInfo("id", "bigint") },
+                 Rows: new List<IReadOnlyDictionary<string, object?>>(),
+                 NextToken: null,
+                 Timings: new QueryTimings(TimeSpan.FromMilliseconds(5), TimeSpan.FromMilliseconds(2), null)
+             ));
+
+        var vm = new ResultsViewModel(pager.Object);
+        vm.Sql = "SELECT * FROM users";
+
+        await vm.RunAsync(CancellationToken.None);
+
+        Assert.True(vm.HasOrderingWarning);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithOrderBy_ClearsOrderingWarning()
+    {
+        var pager = new Mock<IQueryPager>(MockBehavior.Strict);
+        pager.Setup(p => p.ExecuteFirstPageAsync(It.IsAny<string>(), It.IsAny<QueryOptions>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new QueryPage(
+                 Columns: new[] { new ColumnInfo("id", "bigint") },
+                 Rows: new List<IReadOnlyDictionary<string, object?>>(),
+                 NextToken: null,
+                 Timings: new QueryTimings(TimeSpan.FromMilliseconds(5), TimeSpan.FromMilliseconds(2), null)
+             ));
+
+        var vm = new ResultsViewModel(pager.Object);
+        vm.Sql = "SELECT * FROM users ORDER BY id";
+
+        await vm.RunAsync(CancellationToken.None);
+
+        Assert.False(vm.HasOrderingWarning);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithOrderByLowerCase_ClearsOrderingWarning()
+    {
+        var pager = new Mock<IQueryPager>(MockBehavior.Strict);
+        pager.Setup(p => p.ExecuteFirstPageAsync(It.IsAny<string>(), It.IsAny<QueryOptions>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new QueryPage(
+                 Columns: new[] { new ColumnInfo("id", "bigint") },
+                 Rows: new List<IReadOnlyDictionary<string, object?>>(),
+                 NextToken: null,
+                 Timings: new QueryTimings(TimeSpan.FromMilliseconds(5), TimeSpan.FromMilliseconds(2), null)
+             ));
+
+        var vm = new ResultsViewModel(pager.Object);
+        vm.Sql = "select * from users order by name";
+
+        await vm.RunAsync(CancellationToken.None);
+
+        Assert.False(vm.HasOrderingWarning);
+    }
 }
