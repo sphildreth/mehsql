@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MehSql.App.ViewModels;
 using MehSql.Core.Execution;
+using MehSql.Core.Export;
 using MehSql.Core.Querying;
 using Moq;
 using Xunit;
@@ -30,11 +31,22 @@ public sealed class ResultsViewModelTests
         return mock;
     }
 
+    private static Mock<IExportService> CreateMockExportService()
+    {
+        var mock = new Mock<IExportService>(MockBehavior.Loose);
+        mock.Setup(e => e.ExportToCsvAsync(It.IsAny<IAsyncEnumerable<QueryPage>>(), It.IsAny<Stream>(), It.IsAny<ExportOptions>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        mock.Setup(e => e.ExportToJsonAsync(It.IsAny<IAsyncEnumerable<QueryPage>>(), It.IsAny<Stream>(), It.IsAny<ExportOptions>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        return mock;
+    }
+
     [Fact]
     public async Task RunAsync_ClearsRows_ThenLoadsFirstPage()
     {
         var pager = new Mock<IQueryPager>(MockBehavior.Strict);
         var explainService = CreateMockExplainService();
+        var exportService = CreateMockExportService();
 
         var first = new QueryPage(
             Columns: new[] { new ColumnInfo("id", "bigint") },
@@ -49,7 +61,7 @@ public sealed class ResultsViewModelTests
         pager.Setup(p => p.ExecuteFirstPageAsync(It.IsAny<string>(), It.IsAny<QueryOptions>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(first);
 
-        var vm = new ResultsViewModel(pager.Object, explainService.Object);
+        var vm = new ResultsViewModel(pager.Object, explainService.Object, exportService.Object);
         vm.Rows.Add(new Dictionary<string, object?> { ["id"] = 999L });
 
         await vm.RunAsync(CancellationToken.None);
@@ -64,6 +76,7 @@ public sealed class ResultsViewModelTests
     {
         var pager = new Mock<IQueryPager>(MockBehavior.Strict);
         var explainService = CreateMockExplainService();
+        var exportService = CreateMockExportService();
 
         var first = new QueryPage(
             Columns: new[] { new ColumnInfo("id", "bigint") },
@@ -90,7 +103,7 @@ public sealed class ResultsViewModelTests
         pager.Setup(p => p.ExecuteNextPageAsync(It.IsAny<string>(), It.IsAny<QueryOptions>(), It.Is<QueryPageToken>(t => t.Value == "t1"), It.IsAny<CancellationToken>()))
              .ReturnsAsync(next);
 
-        var vm = new ResultsViewModel(pager.Object, explainService.Object);
+        var vm = new ResultsViewModel(pager.Object, explainService.Object, exportService.Object);
 
         await vm.RunAsync(CancellationToken.None);
         Assert.Single(vm.Rows);
@@ -104,6 +117,7 @@ public sealed class ResultsViewModelTests
     {
         var pager = new Mock<IQueryPager>(MockBehavior.Strict);
         var explainService = CreateMockExplainService();
+        var exportService = CreateMockExportService();
         pager.Setup(p => p.ExecuteFirstPageAsync(It.IsAny<string>(), It.IsAny<QueryOptions>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(new QueryPage(
                  Columns: new[] { new ColumnInfo("id", "bigint") },
@@ -112,7 +126,7 @@ public sealed class ResultsViewModelTests
                  Timings: new QueryTimings(TimeSpan.FromMilliseconds(5), TimeSpan.FromMilliseconds(2), null)
              ));
 
-        var vm = new ResultsViewModel(pager.Object, explainService.Object);
+        var vm = new ResultsViewModel(pager.Object, explainService.Object, exportService.Object);
         vm.Sql = "SELECT * FROM users";
 
         await vm.RunAsync(CancellationToken.None);
@@ -125,6 +139,7 @@ public sealed class ResultsViewModelTests
     {
         var pager = new Mock<IQueryPager>(MockBehavior.Strict);
         var explainService = CreateMockExplainService();
+        var exportService = CreateMockExportService();
         pager.Setup(p => p.ExecuteFirstPageAsync(It.IsAny<string>(), It.IsAny<QueryOptions>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(new QueryPage(
                  Columns: new[] { new ColumnInfo("id", "bigint") },
@@ -133,7 +148,7 @@ public sealed class ResultsViewModelTests
                  Timings: new QueryTimings(TimeSpan.FromMilliseconds(5), TimeSpan.FromMilliseconds(2), null)
              ));
 
-        var vm = new ResultsViewModel(pager.Object, explainService.Object);
+        var vm = new ResultsViewModel(pager.Object, explainService.Object, exportService.Object);
         vm.Sql = "SELECT * FROM users ORDER BY id";
 
         await vm.RunAsync(CancellationToken.None);
@@ -146,6 +161,7 @@ public sealed class ResultsViewModelTests
     {
         var pager = new Mock<IQueryPager>(MockBehavior.Strict);
         var explainService = CreateMockExplainService();
+        var exportService = CreateMockExportService();
         pager.Setup(p => p.ExecuteFirstPageAsync(It.IsAny<string>(), It.IsAny<QueryOptions>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(new QueryPage(
                  Columns: new[] { new ColumnInfo("id", "bigint") },
@@ -154,7 +170,7 @@ public sealed class ResultsViewModelTests
                  Timings: new QueryTimings(TimeSpan.FromMilliseconds(5), TimeSpan.FromMilliseconds(2), null)
              ));
 
-        var vm = new ResultsViewModel(pager.Object, explainService.Object);
+        var vm = new ResultsViewModel(pager.Object, explainService.Object, exportService.Object);
         vm.Sql = "select * from users order by name";
 
         await vm.RunAsync(CancellationToken.None);
@@ -167,6 +183,7 @@ public sealed class ResultsViewModelTests
     {
         var pager = new Mock<IQueryPager>(MockBehavior.Loose);
         var explainService = new Mock<IExplainService>(MockBehavior.Strict);
+        var exportService = CreateMockExportService();
         explainService.Setup(e => e.ExplainAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(new QueryExecutionPlan
              {
@@ -174,7 +191,7 @@ public sealed class ResultsViewModelTests
                  IsAnalyzed = false
              });
 
-        var vm = new ResultsViewModel(pager.Object, explainService.Object);
+        var vm = new ResultsViewModel(pager.Object, explainService.Object, exportService.Object);
         vm.Sql = "SELECT * FROM users";
 
         Assert.False(vm.ShowExecutionPlan);
@@ -190,6 +207,7 @@ public sealed class ResultsViewModelTests
     {
         var pager = new Mock<IQueryPager>(MockBehavior.Strict);
         var explainService = new Mock<IExplainService>(MockBehavior.Strict);
+        var exportService = CreateMockExportService();
 
         explainService.Setup(e => e.ExplainAnalyzeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(new QueryExecutionPlan
@@ -208,7 +226,7 @@ public sealed class ResultsViewModelTests
                  Timings: new QueryTimings(TimeSpan.FromMilliseconds(5), TimeSpan.FromMilliseconds(2), null)
              ));
 
-        var vm = new ResultsViewModel(pager.Object, explainService.Object);
+        var vm = new ResultsViewModel(pager.Object, explainService.Object, exportService.Object);
         vm.Sql = "SELECT * FROM users";
 
         Assert.False(vm.ShowExecutionPlan);

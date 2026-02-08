@@ -7,13 +7,9 @@
 - [X] Phase 3 – Virtualized Results + Paging + Cache
 - [X] Phase 4 – Schema Browser
 - [X] Phase 5 – Explain/Analyze + Performance Panel
-- [X] Explain/Analyze tab with Explain and Explain Analyze buttons
-- [X] QueryExecutionPlan model with PlanNode hierarchy
-- [X] ExplainService with JSON parsing support
-- [X] Timing breakdown panel (DB Execution, Fetch, UI Bind, Total, Planning, Execution)
-- [X] TabControl with Results and Explain/Analyze tabs
-- [X] Unit tests for execution plan parsing and QueryTimings
-
+- [ ] Phase 6 – Exports + Polishing
+- [ ] Phase 7 - Open, New and Drag & Drop
+- 
 ## Phase 6 – Export + Polish
 - Streaming export CSV/JSON
 - Preferences (theme, page size)

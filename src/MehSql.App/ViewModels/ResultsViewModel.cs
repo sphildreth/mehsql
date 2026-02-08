@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MehSql.Core.Execution;
+using MehSql.Core.Export;
 using MehSql.Core.Querying;
 using ReactiveUI;
 
@@ -17,14 +19,18 @@ public sealed class ResultsViewModel : ViewModelBase
 {
     private readonly IQueryPager _pager;
     private readonly IExplainService _explainService;
+    private readonly IExportService _exportService;
 
-    public ResultsViewModel(IQueryPager pager, IExplainService explainService)
+    public ResultsViewModel(IQueryPager pager, IExplainService explainService, IExportService exportService)
     {
         _pager = pager;
         _explainService = explainService;
+        _exportService = exportService;
 
         ExplainQueryCommand = ReactiveCommand.CreateFromTask(ExplainQueryAsync);
         ExplainAnalyzeCommand = ReactiveCommand.CreateFromTask(ExplainAnalyzeAsync);
+        ExportToCsvCommand = ReactiveCommand.CreateFromTask<string>(ExportToCsvAsync);
+        ExportToJsonCommand = ReactiveCommand.CreateFromTask<string>(ExportToJsonAsync);
     }
 
     public ObservableCollection<IReadOnlyDictionary<string, object?>> Rows { get; } = new();
@@ -82,8 +88,24 @@ public sealed class ResultsViewModel : ViewModelBase
 
     public string Sql { get; set; } = "SELECT 1;";
 
+    private string? _exportStatus;
+    public string? ExportStatus
+    {
+        get => _exportStatus;
+        private set => this.RaiseAndSetIfChanged(ref _exportStatus, value);
+    }
+
+    private bool _isExporting;
+    public bool IsExporting
+    {
+        get => _isExporting;
+        private set => this.RaiseAndSetIfChanged(ref _isExporting, value);
+    }
+
     public ICommand ExplainQueryCommand { get; }
     public ICommand ExplainAnalyzeCommand { get; }
+    public ICommand ExportToCsvCommand { get; }
+    public ICommand ExportToJsonCommand { get; }
 
     private static bool DetectOrdering(string sql)
     {
@@ -153,6 +175,105 @@ public sealed class ResultsViewModel : ViewModelBase
             ShowExecutionPlan = false;
         }
         finally { IsBusy = false; }
+    }
+
+    public async Task ExportToCsvAsync(string filePath, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(filePath) || Rows.Count == 0)
+        {
+            return;
+        }
+
+        IsExporting = true;
+        ExportStatus = "Exporting to CSV...";
+
+        try
+        {
+            var pages = GetAllPagesAsync(ct);
+            var options = new ExportOptions
+            {
+                IncludeHeaders = true,
+                FormatDatesAsIso = true
+            };
+
+            await using var fileStream = File.Create(filePath);
+            await _exportService.ExportToCsvAsync(pages, fileStream, options, ct);
+
+            ExportStatus = $"Exported to {Path.GetFileName(filePath)}";
+        }
+        catch (OperationCanceledException)
+        {
+            ExportStatus = "Export cancelled";
+        }
+        catch (Exception ex)
+        {
+            ExportStatus = $"Export failed: {ex.Message}";
+        }
+        finally
+        {
+            IsExporting = false;
+        }
+    }
+
+    public async Task ExportToJsonAsync(string filePath, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(filePath) || Rows.Count == 0)
+        {
+            return;
+        }
+
+        IsExporting = true;
+        ExportStatus = "Exporting to JSON...";
+
+        try
+        {
+            var pages = GetAllPagesAsync(ct);
+            var options = new ExportOptions
+            {
+                IncludeHeaders = false,
+                FormatDatesAsIso = true
+            };
+
+            await using var fileStream = File.Create(filePath);
+            await _exportService.ExportToJsonAsync(pages, fileStream, options, ct);
+
+            ExportStatus = $"Exported to {Path.GetFileName(filePath)}";
+        }
+        catch (OperationCanceledException)
+        {
+            ExportStatus = "Export cancelled";
+        }
+        catch (Exception ex)
+        {
+            ExportStatus = $"Export failed: {ex.Message}";
+        }
+        finally
+        {
+            IsExporting = false;
+        }
+    }
+
+    private async IAsyncEnumerable<QueryPage> GetAllPagesAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    {
+        // First page (already loaded)
+        var firstPage = new QueryPage(Columns, Rows.ToList(), null, Timings ?? new QueryTimings(null, TimeSpan.Zero, null));
+        yield return firstPage;
+
+        // Load remaining pages
+        if (_nextToken != null)
+        {
+            var currentToken = _nextToken;
+            while (currentToken != null && !ct.IsCancellationRequested)
+            {
+                var page = await _pager.ExecuteNextPageAsync(Sql, new QueryOptions(), currentToken, ct);
+                if (page.Rows.Count == 0)
+                {
+                    break;
+                }
+                yield return page;
+                currentToken = page.NextToken;
+            }
+        }
     }
 
     private void Apply(QueryPage page, bool isFirstPage)

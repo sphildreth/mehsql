@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MehSql.Core.Connections;
 using MehSql.Core.Execution;
+using MehSql.Core.Export;
 using MehSql.Core.Querying;
 using MehSql.Core.Schema;
 using ReactiveUI;
@@ -29,7 +30,8 @@ public sealed class MainWindowViewModel : ViewModelBase
         // Initialize child view models
         var queryPager = new QueryPager(connectionFactory);
         var explainService = new ExplainService(connectionFactory);
-        Results = new ResultsViewModel(queryPager, explainService);
+        var exportService = new ExportService();
+        Results = new ResultsViewModel(queryPager, explainService, exportService);
         SchemaExplorer = new SchemaExplorerViewModel(new SchemaService(connectionFactory));
 
         // Load schema on startup
