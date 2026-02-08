@@ -1,0 +1,28 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="MehSql.App.Views.PreferencesDialog"
+        Title="Preferences"
+        Width="400" Height="220"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="#1E1E2E">
+  <StackPanel Margin="24" Spacing="16">
+    <TextBlock Text="Preferences" FontSize="20" FontWeight="Bold" Foreground="#CDD6F4"/>
+    <Separator Background="#45475A"/>
+
+    <!-- Theme -->
+    <StackPanel Orientation="Horizontal" Spacing="12">
+      <TextBlock Text="Theme:" Foreground="#CDD6F4" VerticalAlignment="Center" Width="80"/>
+      <ComboBox x:Name="ThemeCombo" Width="180" SelectedIndex="0">
+        <ComboBoxItem Content="Dark"/>
+        <ComboBoxItem Content="Light"/>
+      </ComboBox>
+    </StackPanel>
+
+    <!-- Buttons -->
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+      <Button Content="OK" Padding="24,6" Click="OnOkClick"/>
+      <Button Content="Cancel" Padding="24,6" Click="OnCancelClick"/>
+    </StackPanel>
+  </StackPanel>
+</Window>

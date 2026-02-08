@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using MehSql.App.Services;
 using MehSql.Core.Connections;
 using MehSql.Core.Execution;
 using MehSql.Core.Export;
@@ -18,11 +21,18 @@ namespace MehSql.App.ViewModels;
 public sealed class MainWindowViewModel : ViewModelBase
 {
     private readonly IConnectionFactory _connectionFactory;
+    private readonly SettingsService _settingsService;
     private CancellationTokenSource? _cancellationTokenSource;
 
     public MainWindowViewModel(IConnectionFactory connectionFactory)
+        : this(connectionFactory, new SettingsService())
+    {
+    }
+
+    public MainWindowViewModel(IConnectionFactory connectionFactory, SettingsService settingsService)
     {
         _connectionFactory = connectionFactory;
+        _settingsService = settingsService;
         Log.Logger.Information("Initializing MainWindowViewModel with connection factory");
 
         // Initialize commands
@@ -38,6 +48,9 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         Log.Logger.Information("Initialized child view models");
         
+        // Load recent files from settings
+        RecentFiles = new ObservableCollection<string>(_settingsService.Settings.RecentFiles);
+
         // Load schema on startup
         _ = SchemaExplorer.LoadAsync();
         Log.Logger.Information("Started loading schema on startup");
@@ -82,6 +95,8 @@ public sealed class MainWindowViewModel : ViewModelBase
         get => _currentDatabasePath;
         private set => this.RaiseAndSetIfChanged(ref _currentDatabasePath, value);
     }
+
+    public ObservableCollection<string> RecentFiles { get; }
 
     #endregion
 
@@ -189,6 +204,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
             ErrorMessage = null;
             HasError = false;
+            TrackRecentFile(filePath);
             Log.Logger.Information("Database {FilePath} opened successfully", filePath);
         }
         catch (Exception ex)
@@ -242,6 +258,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
             ErrorMessage = null;
             HasError = false;
+            TrackRecentFile(filePath);
             Log.Logger.Information("New database {FilePath} created successfully", filePath);
         }
         catch (Exception ex)
@@ -249,6 +266,16 @@ public sealed class MainWindowViewModel : ViewModelBase
             Log.Logger.Error(ex, "Failed to create database {FilePath}: {ErrorMessage}", filePath, ex.Message);
             ErrorMessage = $"Failed to create database: {ex.Message}";
             HasError = true;
+        }
+    }
+
+    private void TrackRecentFile(string filePath)
+    {
+        _settingsService.AddRecentFile(filePath);
+        RecentFiles.Clear();
+        foreach (var f in _settingsService.Settings.RecentFiles)
+        {
+            RecentFiles.Add(f);
         }
     }
     

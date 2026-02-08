@@ -16,9 +16,12 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
+using AvaloniaEdit;
+using AvaloniaEdit.TextMate;
 using MehSql.App.Services;
 using MehSql.App.ViewModels;
 using MehSql.Core.Querying;
+using TextMateSharp.Grammars;
 
 namespace MehSql.App.Views;
 
@@ -28,6 +31,7 @@ public partial class MainWindow : Window
     private double[] _columnWidths = [];
     private IReadOnlyList<ColumnInfo> _currentColumns = [];
     private bool _scrollSyncAttached;
+    private bool _suppressEditorSync;
 
     public MainWindow()
     {
@@ -37,7 +41,10 @@ public partial class MainWindow : Window
         AddHandler(DragDrop.DropEvent, OnDrop);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
 
-        // Rebuild results table when Columns changes
+        // Set up SQL syntax highlighting
+        InitializeSqlEditor();
+
+        // Rebuild results table when Columns changes; populate recent files menu
         DataContextChanged += (_, _) =>
         {
             if (DataContext is MainWindowViewModel vm)
@@ -49,8 +56,74 @@ public partial class MainWindow : Window
                         RebuildResultsTable(vm.Results);
                     }
                 };
+
+                // Sync initial text from ViewModel to editor
+                SqlEditor.Text = vm.SqlText ?? "";
+
+                // ViewModel → Editor sync
+                vm.PropertyChanged += (_, args) =>
+                {
+                    if (args.PropertyName == nameof(vm.SqlText) && !_suppressEditorSync)
+                    {
+                        if (SqlEditor.Text != vm.SqlText)
+                        {
+                            SqlEditor.Text = vm.SqlText ?? "";
+                        }
+                    }
+                };
+
+                // Editor → ViewModel sync
+                SqlEditor.TextChanged += (_, _) =>
+                {
+                    _suppressEditorSync = true;
+                    vm.SqlText = SqlEditor.Text;
+                    _suppressEditorSync = false;
+                };
+
+                RebuildRecentFilesMenu(vm);
+                vm.RecentFiles.CollectionChanged += (_, _) => RebuildRecentFilesMenu(vm);
             }
         };
+    }
+
+    private void InitializeSqlEditor()
+    {
+        var registryOptions = new RegistryOptions(ThemeName.DarkPlus);
+        var textMate = SqlEditor.InstallTextMate(registryOptions);
+        var sqlLang = registryOptions.GetLanguageByExtension(".sql");
+        textMate.SetGrammar(registryOptions.GetScopeByLanguageId(sqlLang.Id));
+    }
+
+    private void RebuildRecentFilesMenu(MainWindowViewModel vm)
+    {
+        RecentFilesMenu.Items.Clear();
+
+        if (vm.RecentFiles.Count == 0)
+        {
+            RecentFilesMenu.IsEnabled = false;
+            RecentFilesMenu.Items.Add(new MenuItem { Header = "(none)" });
+            return;
+        }
+
+        RecentFilesMenu.IsEnabled = true;
+        foreach (var path in vm.RecentFiles)
+        {
+            var item = new MenuItem
+            {
+                Header = System.IO.Path.GetFileName(path),
+                Tag = path
+            };
+            // Show full path as tooltip
+            ToolTip.SetTip(item, path);
+            item.Click += async (_, _) =>
+            {
+                if (item.Tag is string filePath)
+                {
+                    await vm.OpenDatabaseAsync(filePath);
+                }
+            };
+            RecentFilesMenu.Items.Add(item);
+        }
     }
 
     private void RebuildResultsTable(ResultsViewModel results)
@@ -289,6 +362,35 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void OnOpenSqlFileClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Open SQL File",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("SQL Files") { Patterns = ["*.sql"] },
+                new FilePickerFileType("All Files") { Patterns = ["*"] }
+            ]
+        });
+
+        if (files.Count > 0)
+        {
+            try
+            {
+                var sqlText = await File.ReadAllTextAsync(files[0].Path.LocalPath);
+                vm.SqlText = sqlText;
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Logger.Warning(ex, "Failed to read SQL file: {Path}", files[0].Path.LocalPath);
+            }
+        }
+    }
+
     private async void OnNewDatabaseClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm) return;
@@ -314,13 +416,31 @@ public partial class MainWindow : Window
         _themeManager.ToggleTheme();
     }
 
+    private void OnExitClick(object? sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    private async void OnPreferencesClick(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new PreferencesDialog(_themeManager);
+        await dialog.ShowDialog(this);
+    }
+
+    private async void OnAboutClick(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new AboutDialog();
+        await dialog.ShowDialog(this);
+    }
+
     private void OnDragOver(object? sender, DragEventArgs e)
     {
-        // Check if the drag contains files
         if (e.DataTransfer.Contains(DataFormat.File))
         {
             var files = e.DataTransfer.TryGetFiles();
-            if (files != null && files.Any(f => f.Name.EndsWith(".ddb", StringComparison.OrdinalIgnoreCase)))
+            if (files != null && files.Any(f =>
+                f.Name.EndsWith(".ddb", StringComparison.OrdinalIgnoreCase) ||
+                f.Name.EndsWith(".sql", StringComparison.OrdinalIgnoreCase)))
             {
                 e.DragEffects = DragDropEffects.Copy;
                 e.Handled = true;
@@ -334,13 +454,29 @@ public partial class MainWindow : Window
 
         if (e.DataTransfer.Contains(DataFormat.File))
         {
-            var files = e.DataTransfer.TryGetFiles();
+            var files = e.DataTransfer.TryGetFiles()?.ToList();
             if (files != null)
             {
+                // Handle .ddb files — open as database
                 var ddbFile = files.FirstOrDefault(f => f.Name.EndsWith(".ddb", StringComparison.OrdinalIgnoreCase));
                 if (ddbFile != null)
                 {
                     await vm.OpenDatabaseAsync(ddbFile.Path.LocalPath);
+                }
+
+                // Handle .sql files — load contents into query editor
+                var sqlFile = files.FirstOrDefault(f => f.Name.EndsWith(".sql", StringComparison.OrdinalIgnoreCase));
+                if (sqlFile != null)
+                {
+                    try
+                    {
+                        var sqlText = await File.ReadAllTextAsync(sqlFile.Path.LocalPath);
+                        vm.SqlText = sqlText;
+                    }
+                    catch (Exception ex)
+                    {
+                        Serilog.Log.Logger.Warning(ex, "Failed to read SQL file: {Path}", sqlFile.Path.LocalPath);
+                    }
                 }
             }
         }

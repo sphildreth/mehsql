@@ -1,0 +1,19 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="MehSql.App.Views.AboutDialog"
+        Title="About MehSQL"
+        Width="400" Height="260"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="#1E1E2E">
+  <StackPanel Margin="24" Spacing="12" HorizontalAlignment="Center">
+    <TextBlock Text="MehSQL" FontSize="28" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center"/>
+    <TextBlock Text="A decent enough SQL GUI for DecentDB" FontSize="13" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
+    <TextBlock x:Name="VersionText" FontSize="12" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
+    <Separator Margin="0,4" Background="#45475A"/>
+    <TextBlock Text="Built with Avalonia 11 and .NET 10" FontSize="11" Foreground="#6C7086" HorizontalAlignment="Center"/>
+    <TextBlock Text="© 2026 MehSQL Contributors" FontSize="11" Foreground="#6C7086" HorizontalAlignment="Center"/>
+    <TextBlock Text="Licensed under MIT" FontSize="11" Foreground="#6C7086" HorizontalAlignment="Center"/>
+    <Button Content="OK" HorizontalAlignment="Center" Padding="24,6" Click="OnOkClick" Margin="0,8,0,0"/>
+  </StackPanel>
+</Window>

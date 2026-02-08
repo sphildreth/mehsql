@@ -3,9 +3,11 @@
         xmlns:vm="using:MehSql.App.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:AvaloniaEdit="using:AvaloniaEdit"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="MehSql.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
+        DragDrop.AllowDrop="True"
         Width="1400" Height="900"
         Title="MehSQL - Phase 2">
 
@@ -19,18 +21,22 @@
       <MenuItem Header="_File" Foreground="{StaticResource TextBrush}">
         <MenuItem Header="_New Database" InputGesture="Ctrl+N" Click="OnNewDatabaseClick"/>
         <MenuItem Header="_Open Database" InputGesture="Ctrl+O" Click="OnOpenDatabaseClick"/>
+        <MenuItem Header="Open _SQL File" InputGesture="Ctrl+Shift+O" Click="OnOpenSqlFileClick"/>
+        <MenuItem Header="_Recent" x:Name="RecentFilesMenu" IsEnabled="False">
+          <MenuItem Header="(none)"/>
+        </MenuItem>
         <Separator/>
-        <MenuItem Header="E_xit" InputGesture="Alt+F4"/>
+        <MenuItem Header="E_xit" InputGesture="Alt+F4" Click="OnExitClick"/>
       </MenuItem>
       <MenuItem Header="_Edit" Foreground="{StaticResource TextBrush}">
-        <MenuItem Header="_Preferences" InputGesture="Ctrl+,"/>
+        <MenuItem Header="_Preferences" InputGesture="Ctrl+," Click="OnPreferencesClick"/>
         <MenuItem Header="_Toggle Theme" InputGesture="Ctrl+T" Click="OnToggleThemeClick"/>
       </MenuItem>
       <MenuItem Header="_View" Foreground="{StaticResource TextBrush}">
         <MenuItem Header="_Refresh" InputGesture="F5" Command="{Binding RunQueryCommand}"/>
       </MenuItem>
       <MenuItem Header="_Help" Foreground="{StaticResource TextBrush}">
-        <MenuItem Header="_About"/>
+        <MenuItem Header="_About" Click="OnAboutClick"/>
       </MenuItem>
     </Menu>
 
@@ -78,35 +84,30 @@
           <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Background="{StaticResource SurfaceLightBrush}">
             <TextBlock Grid.Column="0" Text="SQL Editor" FontWeight="Bold" Padding="8" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="8">
+              <Button Content="📂 Open SQL" Click="OnOpenSqlFileClick" Padding="8,4" ToolTip.Tip="Open a .sql file (Ctrl+Shift+O)"/>
               <Button Classes="primary" Content="Run" Command="{Binding RunQueryCommand}" IsEnabled="{Binding !IsExecuting}" Padding="12,4"/>
               <Button Content="Cancel" Command="{Binding CancelQueryCommand}" IsEnabled="{Binding IsExecuting}" Padding="12,4"/>
               <ProgressBar IsVisible="{Binding IsExecuting}" IsIndeterminate="True" Width="60" VerticalAlignment="Center" Margin="8,0,0,0"/>
             </StackPanel>
           </Grid>
 
-          <!-- Editor TextBox -->
+          <!-- SQL Editor with Syntax Highlighting -->
           <Border Grid.Row="1" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
-            <TextBox Text="{Binding SqlText, Mode=TwoWay}"
-                     AcceptsReturn="True"
-                     AcceptsTab="True"
-                     TextWrapping="NoWrap"
+            <AvaloniaEdit:TextEditor x:Name="SqlEditor"
                      FontFamily="Consolas, Monaco, monospace"
                      FontSize="13"
                      Padding="8"
-                     Watermark="Enter your SQL query here... (F5 to Run)"
                      Background="{StaticResource SurfaceBrush}"
                      Foreground="{StaticResource TextBrush}"
-                     CaretBrush="{StaticResource TextBrush}"
-                     SelectionBrush="{StaticResource PrimaryBrush}"
-                     SelectionForegroundBrush="White"
-                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto">
-              <TextBox.KeyBindings>
+                     ShowLineNumbers="True"
+                     HorizontalScrollBarVisibility="Auto"
+                     VerticalScrollBarVisibility="Auto">
+              <AvaloniaEdit:TextEditor.KeyBindings>
                 <KeyBinding Gesture="F5" Command="{Binding RunQueryCommand}"/>
                 <KeyBinding Gesture="Ctrl+Return" Command="{Binding RunQueryCommand}"/>
                 <KeyBinding Gesture="Ctrl+Shift+C" Command="{Binding CancelQueryCommand}"/>
-              </TextBox.KeyBindings>
-            </TextBox>
+              </AvaloniaEdit:TextEditor.KeyBindings>
+            </AvaloniaEdit:TextEditor>
           </Border>
         </Grid>
 

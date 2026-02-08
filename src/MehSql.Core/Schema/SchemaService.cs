@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MehSql.Core.Connections;
@@ -108,8 +109,10 @@ public sealed class SchemaService : ISchemaService
             Log.Logger.Debug("Retrieved {ColumnCount} columns for table {TableName}", columns.Count, tableName);
             table.Columns.AddRange(columns);
             
-            // Note: Indexes are not directly available through GetSchema in the tests shown
-            // We'll leave indexes empty for now unless there's a specific method for them
+            // Get indexes for this table
+            var indexes = await GetTableIndexesAsync("main", tableName, ct);
+            Log.Logger.Debug("Retrieved {IndexCount} indexes for table {TableName}", indexes.Count, tableName);
+            table.Indexes.AddRange(indexes);
             
             tables.Add(table);
         }
@@ -120,9 +123,9 @@ public sealed class SchemaService : ISchemaService
 
     public async Task<IReadOnlyList<ViewNode>> GetViewsAsync(CancellationToken ct = default)
     {
-        // DecentDB's GetSchema might not distinguish between tables and views in the "Tables" collection
-        // Based on the test, it seems like it might not have a separate Views collection
-        // For now, return empty list, but in the future this could be enhanced
+        Log.Logger.Debug("GetViewsAsync called");
+        // DecentDB does not currently have native view support — views are not exposed
+        // through ListTablesJson or GetSchema. Return empty list until DecentDB adds view APIs.
         return new List<ViewNode>();
     }
 
@@ -172,9 +175,45 @@ public sealed class SchemaService : ISchemaService
     public async Task<IReadOnlyList<IndexNode>> GetTableIndexesAsync(string schema, string tableName, CancellationToken ct = default)
     {
         Log.Logger.Debug("GetTableIndexesAsync called for table: {TableName}, schema: {Schema}", tableName, schema);
-        // DecentDB's GetSchema doesn't seem to have a direct method for indexes based on the tests
-        // Return empty list for now
-        Log.Logger.Information("Returning empty list for indexes (not yet implemented) for table: {TableName}", tableName);
-        return new List<IndexNode>();
+        var indexes = new List<IndexNode>();
+
+        try
+        {
+            using var connection = _connectionFactory.CreateConnection();
+            await connection.OpenAsync(ct);
+
+            var decentDbConnection = connection as DecentDBConnection;
+            if (decentDbConnection is null)
+            {
+                Log.Logger.Error("Connection is not a DecentDBConnection, cannot access index information");
+                return indexes;
+            }
+
+            var dataTable = decentDbConnection.GetSchema("Indexes", new[] { tableName });
+            foreach (DataRow row in dataTable.Rows)
+            {
+                var indexName = (string)row["INDEX_NAME"];
+                var isUnique = (bool)row["IS_UNIQUE"];
+                var columnsStr = (string)row["COLUMNS"];
+                var columnNames = columnsStr.Split(',', StringSplitOptions.TrimEntries).ToList();
+
+                indexes.Add(new IndexNode(indexName, isUnique, columnNames));
+                Log.Logger.Debug("Found index: {IndexName}, Unique: {IsUnique}, Columns: {Columns}",
+                    indexName, isUnique, columnsStr);
+            }
+
+            Log.Logger.Information("Successfully retrieved {IndexCount} indexes for table: {TableName}", indexes.Count, tableName);
+        }
+        catch (EntryPointNotFoundException)
+        {
+            // Native library doesn't support listing indexes yet
+            Log.Logger.Debug("decentdb_list_indexes_json not available in native library, skipping indexes for {TableName}", tableName);
+        }
+        catch (Exception ex)
+        {
+            Log.Logger.Warning(ex, "Failed to retrieve indexes for table {TableName}", tableName);
+        }
+
+        return indexes;
     }
 }
