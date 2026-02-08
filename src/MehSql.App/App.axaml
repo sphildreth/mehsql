@@ -3,5 +3,6 @@
              x:Class="MehSql.App.App">
   <Application.Styles>
     <FluentTheme />
+    <StyleInclude Source="avares://MehSql.App/Styles/DarkThemeWithStyles.axaml" />
   </Application.Styles>
 </Application>

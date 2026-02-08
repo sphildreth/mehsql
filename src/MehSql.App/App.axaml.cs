@@ -2,6 +2,7 @@ using System.IO;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using MehSql.App.Services;
 using MehSql.App.ViewModels;
 using MehSql.App.Views;
 using MehSql.Core.Connections;

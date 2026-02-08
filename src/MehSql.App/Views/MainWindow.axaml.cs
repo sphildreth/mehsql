@@ -7,12 +7,15 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using MehSql.App.Services;
 using MehSql.App.ViewModels;
 
 namespace MehSql.App.Views;
 
 public partial class MainWindow : Window
 {
+    private readonly ThemeManager _themeManager = new ThemeManager();
+
     public MainWindow()
     {
         InitializeComponent();
@@ -61,6 +64,11 @@ public partial class MainWindow : Window
         {
             await vm.CreateDatabaseAsync(file.Path.LocalPath);
         }
+    }
+
+    private void OnToggleThemeClick(object? sender, RoutedEventArgs e)
+    {
+        _themeManager.ToggleTheme();
     }
 
     private void OnDragOver(object? sender, DragEventArgs e)
