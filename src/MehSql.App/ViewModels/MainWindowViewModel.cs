@@ -3,7 +3,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MehSql.Core.Connections;
+using MehSql.Core.Execution;
 using MehSql.Core.Querying;
+using MehSql.Core.Schema;
 using ReactiveUI;
 
 namespace MehSql.App.ViewModels;
@@ -25,7 +27,13 @@ public sealed class MainWindowViewModel : ViewModelBase
         CancelQueryCommand = ReactiveCommand.Create(CancelQuery);
 
         // Initialize child view models
-        Results = new ResultsViewModel(new QueryPager(connectionFactory));
+        var queryPager = new QueryPager(connectionFactory);
+        var explainService = new ExplainService(connectionFactory);
+        Results = new ResultsViewModel(queryPager, explainService);
+        SchemaExplorer = new SchemaExplorerViewModel(new SchemaService(connectionFactory));
+
+        // Load schema on startup
+        _ = SchemaExplorer.LoadAsync();
     }
 
     #region Properties
@@ -59,6 +67,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     }
 
     public ResultsViewModel Results { get; }
+    public SchemaExplorerViewModel SchemaExplorer { get; }
 
     #endregion
 

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
+using MehSql.Core.Execution;
 using MehSql.Core.Querying;
 using ReactiveUI;
 
@@ -14,8 +16,16 @@ namespace MehSql.App.ViewModels;
 public sealed class ResultsViewModel : ViewModelBase
 {
     private readonly IQueryPager _pager;
+    private readonly IExplainService _explainService;
 
-    public ResultsViewModel(IQueryPager pager) => _pager = pager;
+    public ResultsViewModel(IQueryPager pager, IExplainService explainService)
+    {
+        _pager = pager;
+        _explainService = explainService;
+
+        ExplainQueryCommand = ReactiveCommand.CreateFromTask(ExplainQueryAsync);
+        ExplainAnalyzeCommand = ReactiveCommand.CreateFromTask(ExplainAnalyzeAsync);
+    }
 
     public ObservableCollection<IReadOnlyDictionary<string, object?>> Rows { get; } = new();
 
@@ -49,7 +59,31 @@ public sealed class ResultsViewModel : ViewModelBase
         private set => this.RaiseAndSetIfChanged(ref _hasOrderingWarning, value);
     }
 
+    private QueryExecutionPlan? _executionPlan;
+    public QueryExecutionPlan? ExecutionPlan
+    {
+        get => _executionPlan;
+        private set => this.RaiseAndSetIfChanged(ref _executionPlan, value);
+    }
+
+    private bool _showExecutionPlan;
+    public bool ShowExecutionPlan
+    {
+        get => _showExecutionPlan;
+        set => this.RaiseAndSetIfChanged(ref _showExecutionPlan, value);
+    }
+
+    private string? _executionPlanError;
+    public string? ExecutionPlanError
+    {
+        get => _executionPlanError;
+        private set => this.RaiseAndSetIfChanged(ref _executionPlanError, value);
+    }
+
     public string Sql { get; set; } = "SELECT 1;";
+
+    public ICommand ExplainQueryCommand { get; }
+    public ICommand ExplainAnalyzeCommand { get; }
 
     private static bool DetectOrdering(string sql)
     {
@@ -78,6 +112,45 @@ public sealed class ResultsViewModel : ViewModelBase
         {
             var page = await _pager.ExecuteNextPageAsync(Sql, new QueryOptions(), _nextToken, ct);
             Apply(page, isFirstPage: false);
+        }
+        finally { IsBusy = false; }
+    }
+
+    public async Task ExplainQueryAsync(CancellationToken ct)
+    {
+        IsBusy = true;
+        ExecutionPlanError = null;
+        try
+        {
+            ExecutionPlan = await _explainService.ExplainAsync(Sql, ct);
+            ShowExecutionPlan = true;
+        }
+        catch (Exception ex)
+        {
+            ExecutionPlanError = $"Failed to get execution plan: {ex.Message}";
+            ShowExecutionPlan = false;
+        }
+        finally { IsBusy = false; }
+    }
+
+    public async Task ExplainAnalyzeAsync(CancellationToken ct)
+    {
+        IsBusy = true;
+        ExecutionPlanError = null;
+        try
+        {
+            ExecutionPlan = await _explainService.ExplainAnalyzeAsync(Sql, ct);
+
+            // Also run the actual query to get results and timings
+            await RunAsync(ct);
+
+            // Show execution plan after getting results
+            ShowExecutionPlan = true;
+        }
+        catch (Exception ex)
+        {
+            ExecutionPlanError = $"Failed to analyze execution: {ex.Message}";
+            ShowExecutionPlan = false;
         }
         finally { IsBusy = false; }
     }

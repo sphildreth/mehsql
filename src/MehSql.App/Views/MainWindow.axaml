@@ -36,14 +36,18 @@
       
       <!-- LEFT PANE: Schema Explorer -->
       <Border Grid.Column="0" BorderBrush="#ccc" BorderThickness="0,0,1,0" Background="#f8f8f8">
-        <Grid RowDefinitions="Auto,*">
+        <Grid RowDefinitions="Auto,Auto,*">
           <TextBlock Grid.Row="0" Text="Schema Explorer" FontWeight="Bold" Padding="8" Background="#eee"/>
-          <TreeView Grid.Row="1" Margin="4">
-            <TreeViewItem Header="(Schemas - Phase 4)" IsExpanded="True">
-              <TreeViewItem Header="Tables"/>
-              <TreeViewItem Header="Views"/>
-              <TreeViewItem Header="Indexes"/>
-            </TreeViewItem>
+          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="4" Margin="4">
+            <Button Content="🔄 Refresh" Command="{Binding SchemaExplorer.RefreshCommand}" IsEnabled="{Binding !SchemaExplorer.IsLoading}"/>
+            <ProgressBar IsVisible="{Binding SchemaExplorer.IsLoading}" IsIndeterminate="True" Width="60" VerticalAlignment="Center"/>
+          </StackPanel>
+          <TreeView Grid.Row="2" Margin="4" ItemsSource="{Binding SchemaExplorer.RootNodes}">
+            <TreeView.ItemTemplate>
+              <TreeDataTemplate ItemsSource="{Binding Children}">
+                <TextBlock Text="{Binding DisplayName}"/>
+              </TreeDataTemplate>
+            </TreeView.ItemTemplate>
           </TreeView>
         </Grid>
       </Border>
@@ -112,49 +116,110 @@
             </StackPanel>
           </Border>
 
-          <!-- Results Header -->
-          <Grid Grid.Row="2" Background="#f8f8f8" RowDefinitions="Auto,*">
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Background="#eee">
-              <TextBlock Grid.Column="0" Text="Query Results" FontWeight="Bold" Padding="8"/>
-              <TextBlock Grid.Column="1" Text="{Binding Results.Rows.Count, StringFormat='{}{0} rows'}" Padding="8" Opacity="0.6"/>
-            </Grid>
+          <!-- Results/Explain Tab Control -->
+          <TabControl Grid.Row="2">
+            <TabItem Header="Results">
+              <Grid RowDefinitions="Auto,*">
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Background="#eee">
+                  <TextBlock Grid.Column="0" Text="Query Results" FontWeight="Bold" Padding="8"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Results.Rows.Count, StringFormat='{}{0} rows'}" Padding="8" Opacity="0.6"/>
+                </Grid>
+                
+                <!-- Results DataGrid with Virtualization -->
+                <Border Grid.Row="1" BorderBrush="#ddd" BorderThickness="0,1,0,0">
+                  <DataGrid ItemsSource="{Binding Results.Rows}"
+                            AutoGenerateColumns="True"
+                            IsReadOnly="True"
+                            GridLinesVisibility="All"
+                            BorderThickness="0"
+                            ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                            ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <DataGrid.Styles>
+                      <Style Selector="DataGrid">
+                        <Setter Property="(ScrollViewer.HorizontalScrollBarVisibility)" Value="Auto"/>
+                        <Setter Property="(ScrollViewer.VerticalScrollBarVisibility)" Value="Auto"/>
+                      </Style>
+                    </DataGrid.Styles>
+                  </DataGrid>
+                </Border>
+              </Grid>
+            </TabItem>
             
-            <!-- Results DataGrid with Virtualization -->
-            <Border Grid.Row="1" BorderBrush="#ddd" BorderThickness="0,1,0,0">
-              <DataGrid ItemsSource="{Binding Results.Rows}"
-                        AutoGenerateColumns="True"
-                        IsReadOnly="True"
-                        GridLinesVisibility="All"
-                        BorderThickness="0"
-                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                        ScrollViewer.VerticalScrollBarVisibility="Auto">
-                <DataGrid.Styles>
-                  <Style Selector="DataGrid">
-                    <Setter Property="(ScrollViewer.HorizontalScrollBarVisibility)" Value="Auto"/>
-                    <Setter Property="(ScrollViewer.VerticalScrollBarVisibility)" Value="Auto"/>
-                  </Style>
-                </DataGrid.Styles>
-              </DataGrid>
-            </Border>
-          </Grid>
+            <TabItem Header="Explain / Analyze">
+              <Grid RowDefinitions="Auto,*">
+                <!-- Explain Toolbar -->
+                <Grid Grid.Row="0" Background="#f5f5f5" ColumnDefinitions="Auto,Auto,*">
+                  <Button Grid.Column="0" Content="Explain" Command="{Binding Results.ExplainQueryCommand}" IsEnabled="{Binding !Results.IsBusy}" Margin="4" Padding="12,4"/>
+                  <Button Grid.Column="1" Content="Explain Analyze" Command="{Binding Results.ExplainAnalyzeCommand}" IsEnabled="{Binding !Results.IsBusy}" Margin="4" Padding="12,4" Background="#0078d4" Foreground="White"/>
+                  <TextBlock Grid.Column="2" Text="Shows query execution plan" VerticalAlignment="Center" Margin="8,0" Opacity="0.6" FontSize="11"/>
+                </Grid>
+                
+                <!-- Execution Plan Display -->
+                <Border Grid.Row="1" BorderBrush="#ddd" BorderThickness="0,1,0,0">
+                  <Grid RowDefinitions="Auto,*">
+                    <!-- Error Message -->
+                    <Border Grid.Row="0" Background="#fee" BorderBrush="#fcc" BorderThickness="0,0,0,1" Padding="8" IsVisible="{Binding Results.ExecutionPlanError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                      <TextBlock Text="{Binding Results.ExecutionPlanError}" TextWrapping="Wrap" Foreground="#800"/>
+                    </Border>
+                    
+                    <!-- Raw Execution Plan Output -->
+                    <ScrollViewer Grid.Row="1" IsVisible="{Binding Results.ShowExecutionPlan}">
+                      <TextBlock Text="{Binding Results.ExecutionPlan.RawOutput}" FontFamily="Consolas, monospace" FontSize="11" Padding="8" TextWrapping="Wrap"/>
+                    </ScrollViewer>
+                    
+                    <!-- Empty State -->
+                    <TextBlock Grid.Row="1" Text="Click 'Explain' or 'Explain Analyze' to see the query execution plan" VerticalAlignment="Center" HorizontalAlignment="Center" Opacity="0.5" IsVisible="{Binding !Results.ShowExecutionPlan}"/>
+                  </Grid>
+                </Border>
+              </Grid>
+            </TabItem>
+          </TabControl>
 
           <!-- Performance Panel (Bottom) -->
           <Border Grid.Row="3" Background="#f0f0f0" BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="8">
-            <StackPanel Orientation="Horizontal" Spacing="24">
-              <StackPanel>
-                <TextBlock Text="DB Execution" Opacity="0.7" FontSize="10"/>
-                <TextBlock Text="{Binding Results.Timings.DbExecutionTime, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12"/>
+            <Grid ColumnDefinitions="*,Auto">
+              <!-- Timing Metrics -->
+              <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="24">
+                <StackPanel>
+                  <TextBlock Text="DB Execution" Opacity="0.7" FontSize="10"/>
+                  <TextBlock Text="{Binding Results.Timings.DbExecutionTime, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12"/>
+                </StackPanel>
+                <StackPanel>
+                  <TextBlock Text="Fetch Time" Opacity="0.7" FontSize="10"/>
+                  <TextBlock Text="{Binding Results.Timings.FetchTime, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12"/>
+                </StackPanel>
+                <StackPanel>
+                  <TextBlock Text="UI Bind" Opacity="0.7" FontSize="10"/>
+                  <TextBlock Text="{Binding Results.Timings.UiBindTime, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12"/>
+                </StackPanel>
+                <StackPanel>
+                  <TextBlock Text="Total" Opacity="0.7" FontSize="10"/>
+                  <TextBlock FontWeight="SemiBold" FontSize="12">
+                    <TextBlock.Text>
+                      <MultiBinding StringFormat="{}{0:F2} ms">
+                        <Binding Path="Results.Timings.TotalTime.TotalMilliseconds" FallbackValue="--"/>
+                      </MultiBinding>
+                    </TextBlock.Text>
+                  </TextBlock>
+                </StackPanel>
+                <StackPanel>
+                  <TextBlock Text="Rows" Opacity="0.7" FontSize="10"/>
+                  <TextBlock Text="{Binding Results.Rows.Count}" FontWeight="SemiBold" FontSize="12"/>
+                </StackPanel>
               </StackPanel>
-              <StackPanel>
-                <TextBlock Text="Fetch Time" Opacity="0.7" FontSize="10"/>
-                <TextBlock Text="{Binding Results.Timings.FetchTime, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12"/>
+              
+              <!-- Planning Time (when available) -->
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" IsVisible="{Binding Results.ExecutionPlan.PlanningTime, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <StackPanel>
+                  <TextBlock Text="Planning" Opacity="0.7" FontSize="10"/>
+                  <TextBlock Text="{Binding Results.ExecutionPlan.PlanningTime, StringFormat='{}{0:F2} ms'}" FontWeight="SemiBold" FontSize="12" Foreground="#0078d4"/>
+                </StackPanel>
+                <StackPanel IsVisible="{Binding Results.ExecutionPlan.ExecutionTime, Converter={x:Static ObjectConverters.IsNotNull}}">
+                  <TextBlock Text="Execution" Opacity="0.7" FontSize="10"/>
+                  <TextBlock Text="{Binding Results.ExecutionPlan.ExecutionTime, StringFormat='{}{0:F2} ms'}" FontWeight="SemiBold" FontSize="12" Foreground="#0078d4"/>
+                </StackPanel>
               </StackPanel>
-              <StackPanel>
-                <TextBlock Text="Rows" Opacity="0.7" FontSize="10"/>
-                <TextBlock Text="{Binding Results.Rows.Count}" FontWeight="SemiBold" FontSize="12"/>
-              </StackPanel>
-              <TextBlock Text="(Phase 5 will enhance performance panel)" Opacity="0.5" FontSize="10" VerticalAlignment="Center" FontStyle="Italic"/>
-            </StackPanel>
+            </Grid>
           </Border>
         </Grid>
       </Grid>
