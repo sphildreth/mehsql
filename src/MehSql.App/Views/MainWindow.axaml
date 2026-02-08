@@ -52,20 +52,15 @@
             <ProgressBar IsVisible="{Binding SchemaExplorer.IsLoading}" IsIndeterminate="True" Width="60" VerticalAlignment="Center"/>
           </StackPanel>
           <TreeView Grid.Row="2" Margin="4" ItemsSource="{Binding SchemaExplorer.RootNodes}">
-            <TreeView.Styles>
-              <Style Selector="TreeViewItem">
-                <Setter Property="ContextMenu">
-                  <Setter.Value>
-                    <ContextMenu>
-                      <MenuItem Header="SELECT TOP 1000 Rows" Command="{Binding SelectTopRowsCommand}" />
-                    </ContextMenu>
-                  </Setter.Value>
-                </Setter>
-              </Style>
-            </TreeView.Styles>
             <TreeView.ItemTemplate>
               <TreeDataTemplate ItemsSource="{Binding Children}">
-                <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextBrush}"/>
+                <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextBrush}">
+                  <TextBlock.ContextMenu>
+                    <ContextMenu IsVisible="{Binding SelectTopRowsCommand, Converter={x:Static ObjectConverters.IsNotNull}}">
+                      <MenuItem Header="SELECT TOP 1000 Rows" Command="{Binding SelectTopRowsCommand}" />
+                    </ContextMenu>
+                  </TextBlock.ContextMenu>
+                </TextBlock>
               </TreeDataTemplate>
             </TreeView.ItemTemplate>
           </TreeView>
