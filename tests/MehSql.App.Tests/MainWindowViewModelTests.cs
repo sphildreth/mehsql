@@ -13,10 +13,10 @@ public class MainWindowViewModelTests
     {
         // Arrange
         var mockFactory = new Mock<IConnectionFactory>();
-        
+
         // Act
         var vm = new MainWindowViewModel(mockFactory.Object);
-        
+
         // Assert
         Assert.NotNull(vm.SqlText);
         Assert.False(vm.IsExecuting);
@@ -35,10 +35,10 @@ public class MainWindowViewModelTests
         var vm = new MainWindowViewModel(mockFactory.Object);
         var propertyChanged = false;
         vm.PropertyChanged += (s, e) => { if (e.PropertyName == nameof(vm.SqlText)) propertyChanged = true; };
-        
+
         // Act
         vm.SqlText = "SELECT * FROM test;";
-        
+
         // Assert
         Assert.True(propertyChanged);
         Assert.Equal("SELECT * FROM test;", vm.SqlText);
@@ -52,11 +52,11 @@ public class MainWindowViewModelTests
         var vm = new MainWindowViewModel(mockFactory.Object);
         var propertyChanged = false;
         vm.PropertyChanged += (s, e) => { if (e.PropertyName == nameof(vm.IsExecuting)) propertyChanged = true; };
-        
+
         // Act - Note: IsExecuting is private set, so we test via RunQueryAsync
         // But we can verify the initial state and that it implements the property
         var initialValue = vm.IsExecuting;
-        
+
         // Assert
         Assert.False(initialValue);
     }
@@ -67,7 +67,7 @@ public class MainWindowViewModelTests
         // Arrange
         var mockFactory = new Mock<IConnectionFactory>();
         var vm = new MainWindowViewModel(mockFactory.Object);
-        
+
         // Assert initial state
         Assert.False(vm.HasError);
     }
@@ -79,10 +79,10 @@ public class MainWindowViewModelTests
         var mockFactory = new Mock<IConnectionFactory>();
         var vm = new MainWindowViewModel(mockFactory.Object);
         vm.SqlText = "   "; // Empty/whitespace SQL
-        
+
         // Act - We can't easily test the async command execution without more setup,
         // but we can verify the command exists and initial state is correct
-        
+
         // Assert
         Assert.NotNull(vm.RunQueryCommand);
         Assert.False(vm.HasError); // Initially no error
@@ -95,7 +95,7 @@ public class MainWindowViewModelTests
         // Arrange
         var mockFactory = new Mock<IConnectionFactory>();
         var vm = new MainWindowViewModel(mockFactory.Object);
-        
+
         // The command itself doesn't have CanExecute - the button binding uses IsExecuting
         // So we just verify the command exists
         Assert.NotNull(vm.CancelQueryCommand);

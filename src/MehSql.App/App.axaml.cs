@@ -19,7 +19,7 @@ public sealed class App : Application
             // Create a default database path in temp folder
             var dbPath = Path.Combine(Path.GetTempPath(), $"mehsql_{System.Guid.NewGuid()}.db");
             var connectionFactory = new ConnectionFactory(dbPath);
-            
+
             desktop.MainWindow = new MainWindow
             {
                 DataContext = new MainWindowViewModel(connectionFactory)

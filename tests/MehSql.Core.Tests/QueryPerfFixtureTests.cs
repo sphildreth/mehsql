@@ -59,7 +59,7 @@ public class QueryPerfFixtureTests : IDisposable
         Assert.NotNull(result.Timings.DbExecutionTime);
         Assert.True(result.Timings.DbExecutionTime.Value.TotalMilliseconds > 0,
             "DB execution time should be greater than 0");
-        
+
         _output.WriteLine($"DB Execution Time: {result.Timings.DbExecutionTime.Value.TotalMilliseconds:F3}ms");
         _output.WriteLine($"Fetch Time: {result.Timings.FetchTime.TotalMilliseconds:F3}ms");
     }
@@ -78,7 +78,7 @@ public class QueryPerfFixtureTests : IDisposable
         // Assert
         Assert.True(result.Timings.FetchTime.TotalMilliseconds >= 0,
             "Fetch time should be non-negative");
-        
+
         _output.WriteLine($"Fetch Time: {result.Timings.FetchTime.TotalMilliseconds:F3}ms");
     }
 
@@ -108,9 +108,9 @@ public class QueryPerfFixtureTests : IDisposable
         Assert.Equal(rowCount, count);
         _output.WriteLine($"Streamed {rowCount} rows in {sw.ElapsedMilliseconds}ms " +
                          $"({(double)sw.ElapsedMilliseconds / rowCount:F3}ms per row)");
-        
+
         // Should complete reasonably fast (< 5 seconds for 1000 rows)
-        Assert.True(sw.ElapsedMilliseconds < 5000, 
+        Assert.True(sw.ElapsedMilliseconds < 5000,
             $"Streaming {rowCount} rows took too long: {sw.ElapsedMilliseconds}ms");
     }
 
@@ -140,7 +140,7 @@ public class QueryPerfFixtureTests : IDisposable
 
         // Assert
         Assert.Equal(totalRows, allRows.Count);
-        
+
         // Verify ordering (ids should be 1, 2, 3, ...)
         for (int i = 0; i < allRows.Count; i++)
         {

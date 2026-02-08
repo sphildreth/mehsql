@@ -72,7 +72,7 @@ public sealed class ResultsViewModelTests
         var vm = new ResultsViewModel(pager.Object);
 
         await vm.RunAsync(CancellationToken.None);
-        Assert.Equal(1, vm.Rows.Count);
+        Assert.Single(vm.Rows);
 
         await vm.LoadMoreAsync(CancellationToken.None);
         Assert.Equal(3, vm.Rows.Count);

@@ -170,8 +170,8 @@ public sealed class QueryExecutor : IQueryExecutor
         fetchStopwatch.Stop();
 
         // Get total count - skip if query already has LIMIT/OFFSET
-        var totalCount = sql.Contains("LIMIT", StringComparison.OrdinalIgnoreCase) 
-            ? rows.Count 
+        var totalCount = sql.Contains("LIMIT", StringComparison.OrdinalIgnoreCase)
+            ? rows.Count
             : await GetTotalCountAsync(sql, connection, cancellationToken);
 
         var timings = new QueryTimings(

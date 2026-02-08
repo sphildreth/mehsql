@@ -23,9 +23,9 @@ public sealed class QueryPager : IQueryPager
     public async Task<QueryPage> ExecuteFirstPageAsync(string sql, QueryOptions options, CancellationToken ct)
     {
         var result = await _executor.ExecutePageAsync(sql, options, offset: null, ct);
-        
-        var nextToken = result.Rows.Count >= options.PageSize 
-            ? new QueryPageToken($"offset:{options.PageSize}") 
+
+        var nextToken = result.Rows.Count >= options.PageSize
+            ? new QueryPageToken($"offset:{options.PageSize}")
             : null;
 
         return new QueryPage(
@@ -44,9 +44,9 @@ public sealed class QueryPager : IQueryPager
         }
 
         var result = await _executor.ExecutePageAsync(sql, options, offset, ct);
-        
-        var nextToken = result.Rows.Count >= options.PageSize 
-            ? new QueryPageToken($"offset:{offset + options.PageSize}") 
+
+        var nextToken = result.Rows.Count >= options.PageSize
+            ? new QueryPageToken($"offset:{offset + options.PageSize}")
             : null;
 
         return new QueryPage(

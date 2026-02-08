@@ -19,11 +19,11 @@ public sealed class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel(IConnectionFactory connectionFactory)
     {
         _connectionFactory = connectionFactory;
-        
+
         // Initialize commands
         RunQueryCommand = ReactiveCommand.CreateFromTask(RunQueryAsync);
         CancelQueryCommand = ReactiveCommand.Create(CancelQuery);
-        
+
         // Initialize child view models
         Results = new ResultsViewModel(new QueryPager(connectionFactory));
     }

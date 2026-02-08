@@ -11,7 +11,7 @@
 
 ---
 
-## Phase 0 – Project Scaffold & CI
+## Phase 0 – Project Scaffo~~~~ld & CI
 - [X] .NET 10 solution
 - [X] Avalonia 11 app project
 - [X] CI matrix for Windows/macOS/Linux:

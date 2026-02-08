@@ -18,7 +18,7 @@ public class QueryExecutorTests : IDisposable
     {
         _testDbPath = Path.Combine(Path.GetTempPath(), $"mehsql_test_{Guid.NewGuid()}.db");
         _connectionFactory = new ConnectionFactory(_testDbPath);
-        
+
         // Initialize test database with sample data
         InitializeTestDatabase().Wait();
     }
@@ -61,7 +61,7 @@ public class QueryExecutorTests : IDisposable
             (4L, "Item 4", 40.75),
             (5L, "Item 5", 50.0)
         };
-        
+
         foreach (var (id, name, value) in items)
         {
             using var insertCmd = conn.CreateCommand();
@@ -105,9 +105,9 @@ public class QueryExecutorTests : IDisposable
         var options = new QueryOptions(PageSize: 2);
 
         var firstPage = await executor.ExecutePageAsync("SELECT * FROM test_items ORDER BY id", options, offset: null);
-        
+
         Assert.Equal(2, firstPage.Rows.Count);
-        
+
         // Check first row has id=1
         var firstRow = firstPage.Rows[0];
         Assert.True(firstRow.Values.ContainsKey("id"));
@@ -140,7 +140,7 @@ public class QueryExecutorTests : IDisposable
         var executor = new QueryExecutor(_connectionFactory);
         var options = new QueryOptions();
         using var cts = new System.Threading.CancellationTokenSource();
-        
+
         // Cancel before starting - behavior depends on DecentDB implementation
         cts.Cancel();
 
@@ -171,7 +171,7 @@ public class QueryExecutorTests : IDisposable
     {
         var factory = new ConnectionFactory(_testDbPath);
         using var conn = factory.CreateConnection();
-        
+
         Assert.NotNull(conn);
     }
 
@@ -180,7 +180,7 @@ public class QueryExecutorTests : IDisposable
     {
         var factory = new ConnectionFactory($"Data Source={_testDbPath}");
         using var conn = factory.CreateConnection();
-        
+
         Assert.NotNull(conn);
     }
 }
