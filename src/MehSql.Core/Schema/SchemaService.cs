@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using MehSql.Core.Connections;
+using DecentDB.AdoNet;
+using Serilog;
 
 namespace MehSql.Core.Schema;
 
@@ -38,9 +41,8 @@ public interface ISchemaService
 }
 
 /// <summary>
-/// Stub implementation for Phase 4.
-/// Note: Full introspection requires DecentDB to expose catalog tables.
-/// Currently returns empty lists - UI structure is in place for when backend supports it.
+/// Implementation of ISchemaService that retrieves schema information from DecentDB.
+/// Uses GetSchema() method to introspect the database structure.
 /// </summary>
 public sealed class SchemaService : ISchemaService
 {
@@ -49,34 +51,130 @@ public sealed class SchemaService : ISchemaService
     public SchemaService(IConnectionFactory connectionFactory)
     {
         _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
+        Log.Logger.Information("SchemaService initialized with connection factory");
     }
 
-    public Task<SchemaRootNode> GetSchemaAsync(CancellationToken ct = default)
+    public async Task<SchemaRootNode> GetSchemaAsync(CancellationToken ct = default)
     {
-        // Return empty schema - DecentDB doesn't expose catalog tables yet
+        Log.Logger.Debug("GetSchemaAsync called with cancellation token");
         var root = new SchemaRootNode("main");
-        return Task.FromResult(root);
+        
+        // Get all tables
+        var tables = await GetTablesAsync(ct);
+        Log.Logger.Debug("Retrieved {TableCount} tables", tables.Count);
+        root.Tables.AddRange(tables);
+        
+        // Get all views
+        var views = await GetViewsAsync(ct);
+        Log.Logger.Debug("Retrieved {ViewCount} views", views.Count);
+        root.Views.AddRange(views);
+        
+        Log.Logger.Information("Schema retrieved with {TableCount} tables and {ViewCount} views", 
+            root.Tables.Count, root.Views.Count);
+        return root;
     }
 
-    public Task<IReadOnlyList<TableNode>> GetTablesAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<TableNode>> GetTablesAsync(CancellationToken ct = default)
     {
-        // DecentDB doesn't expose pg_catalog or information_schema tables
-        // This would require DecentDB to implement catalog introspection
-        return Task.FromResult<IReadOnlyList<TableNode>>(new List<TableNode>());
+        Log.Logger.Debug("GetTablesAsync called with cancellation token");
+        var tables = new List<TableNode>();
+        
+        using var connection = _connectionFactory.CreateConnection();
+        await connection.OpenAsync(ct);
+        Log.Logger.Debug("Connection opened for retrieving tables");
+
+        // Use DecentDB's GetSchema to get table information
+        // Need to cast to DecentDBConnection to access GetSchema method
+        var decentDbConnection = connection as DecentDBConnection;
+        if (decentDbConnection == null)
+        {
+            Log.Logger.Error("Connection is not a DecentDBConnection, cannot access schema information");
+            throw new InvalidOperationException("Connection must be a DecentDBConnection to access schema information.");
+        }
+        
+        Log.Logger.Debug("Getting 'Tables' schema information");
+        var dataTable = decentDbConnection.GetSchema("Tables");
+        Log.Logger.Debug("Retrieved schema data table with {RowCount} rows", dataTable.Rows.Count);
+        
+        foreach (DataRow row in dataTable.Rows)
+        {
+            var tableName = (string)row["TABLE_NAME"];
+            Log.Logger.Debug("Processing table: {TableName}", tableName);
+            
+            var table = new TableNode("main", tableName);
+            
+            // Get columns for this table
+            var columns = await GetTableColumnsAsync("main", tableName, ct);
+            Log.Logger.Debug("Retrieved {ColumnCount} columns for table {TableName}", columns.Count, tableName);
+            table.Columns.AddRange(columns);
+            
+            // Note: Indexes are not directly available through GetSchema in the tests shown
+            // We'll leave indexes empty for now unless there's a specific method for them
+            
+            tables.Add(table);
+        }
+
+        Log.Logger.Information("Successfully retrieved {TableCount} tables", tables.Count);
+        return tables;
     }
 
-    public Task<IReadOnlyList<ViewNode>> GetViewsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<ViewNode>> GetViewsAsync(CancellationToken ct = default)
     {
-        return Task.FromResult<IReadOnlyList<ViewNode>>(new List<ViewNode>());
+        // DecentDB's GetSchema might not distinguish between tables and views in the "Tables" collection
+        // Based on the test, it seems like it might not have a separate Views collection
+        // For now, return empty list, but in the future this could be enhanced
+        return new List<ViewNode>();
     }
 
-    public Task<IReadOnlyList<ColumnNode>> GetTableColumnsAsync(string schema, string tableName, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ColumnNode>> GetTableColumnsAsync(string schema, string tableName, CancellationToken ct = default)
     {
-        return Task.FromResult<IReadOnlyList<ColumnNode>>(new List<ColumnNode>());
+        Log.Logger.Debug("GetTableColumnsAsync called for table: {TableName}, schema: {Schema}", tableName, schema);
+        var columns = new List<ColumnNode>();
+        
+        using var connection = _connectionFactory.CreateConnection();
+        await connection.OpenAsync(ct);
+        Log.Logger.Debug("Connection opened for retrieving columns for table: {TableName}", tableName);
+
+        // Use DecentDB's GetSchema to get column information for the specific table
+        // Need to cast to DecentDBConnection to access GetSchema method
+        var decentDbConnection = connection as DecentDBConnection;
+        if (decentDbConnection == null)
+        {
+            Log.Logger.Error("Connection is not a DecentDBConnection, cannot access schema information for table: {TableName}", tableName);
+            throw new InvalidOperationException("Connection must be a DecentDBConnection to access schema information.");
+        }
+        
+        Log.Logger.Debug("Getting 'Columns' schema information for table: {TableName}", tableName);
+        var dataTable = decentDbConnection.GetSchema("Columns", new[] { tableName });
+        Log.Logger.Debug("Retrieved column schema data table with {RowCount} rows for table: {TableName}", dataTable.Rows.Count, tableName);
+        
+        foreach (DataRow row in dataTable.Rows)
+        {
+            var columnName = (string)row["COLUMN_NAME"];
+            var dataType = (string)row["DATA_TYPE"];
+            var isNullable = (bool)row["IS_NULLABLE"];
+            var isPrimaryKey = row.Table.Columns.Contains("IS_PRIMARY_KEY") ? (bool)row["IS_PRIMARY_KEY"] : false;
+            var defaultValue = row.Table.Columns.Contains("COLUMN_DEFAULT") && !row.IsNull("COLUMN_DEFAULT") 
+                ? row["COLUMN_DEFAULT"].ToString() 
+                : null;
+
+            Log.Logger.Debug("Processing column: {ColumnName}, Type: {DataType}, Nullable: {IsNullable}, PK: {IsPrimaryKey}", 
+                columnName, dataType, isNullable, isPrimaryKey);
+                
+            var column = new ColumnNode(columnName, dataType, isNullable, defaultValue, isPrimaryKey);
+            columns.Add(column);
+        }
+
+        Log.Logger.Information("Successfully retrieved {ColumnCount} columns for table: {TableName}", columns.Count, tableName);
+        return columns;
     }
 
-    public Task<IReadOnlyList<IndexNode>> GetTableIndexesAsync(string schema, string tableName, CancellationToken ct = default)
+    public async Task<IReadOnlyList<IndexNode>> GetTableIndexesAsync(string schema, string tableName, CancellationToken ct = default)
     {
-        return Task.FromResult<IReadOnlyList<IndexNode>>(new List<IndexNode>());
+        Log.Logger.Debug("GetTableIndexesAsync called for table: {TableName}, schema: {Schema}", tableName, schema);
+        // DecentDB's GetSchema doesn't seem to have a direct method for indexes based on the tests
+        // Return empty list for now
+        Log.Logger.Information("Returning empty list for indexes (not yet implemented) for table: {TableName}", tableName);
+        return new List<IndexNode>();
     }
 }

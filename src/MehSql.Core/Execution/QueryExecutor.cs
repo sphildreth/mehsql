@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using DecentDB.AdoNet;
 using MehSql.Core.Connections;
 using MehSql.Core.Querying;
+using Serilog;
 
 namespace MehSql.Core.Execution;
 
@@ -67,6 +68,7 @@ public sealed class QueryExecutor : IQueryExecutor
     public QueryExecutor(IConnectionFactory connectionFactory)
     {
         _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
+        Log.Logger.Information("QueryExecutor initialized with connection factory");
     }
 
     public async IAsyncEnumerable<ResultRow> ExecuteQueryAsync(
@@ -74,28 +76,37 @@ public sealed class QueryExecutor : IQueryExecutor
         QueryOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        Log.Logger.Debug("ExecuteQueryAsync called with SQL: {SqlText}", sql?.Substring(0, Math.Min(sql.Length, 100)));
+        
         if (string.IsNullOrWhiteSpace(sql))
         {
+            Log.Logger.Error("ExecuteQueryAsync called with empty SQL query");
             throw new ArgumentException("SQL query cannot be empty.", nameof(sql));
         }
 
         using var connection = _connectionFactory.CreateConnection();
+        Log.Logger.Debug("Opening connection for query execution");
         await connection.OpenAsync(cancellationToken);
 
         using var command = connection.CreateCommand();
         command.CommandText = sql;
+        Log.Logger.Debug("Created command with SQL: {SqlText}", sql?.Substring(0, Math.Min(sql.Length, 200)));
 
+        Log.Logger.Debug("Executing command and getting reader");
         using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
         // Get column information
         var columnCount = reader.FieldCount;
+        Log.Logger.Debug("Query returned {ColumnCount} columns", columnCount);
         var columnNames = new string[columnCount];
         for (int i = 0; i < columnCount; i++)
         {
             columnNames[i] = reader.GetName(i);
         }
 
+        Log.Logger.Debug("Starting to stream rows");
         // Stream rows
+        var rowCount = 0;
         while (await reader.ReadAsync(cancellationToken))
         {
             var values = new Dictionary<string, object?>(columnCount);
@@ -104,8 +115,10 @@ public sealed class QueryExecutor : IQueryExecutor
                 var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
                 values[columnNames[i]] = value;
             }
+            rowCount++;
             yield return new ResultRow(values);
         }
+        Log.Logger.Debug("Streamed {RowCount} rows", rowCount);
     }
 
     public async Task<QueryResult> ExecutePageAsync(
@@ -114,8 +127,12 @@ public sealed class QueryExecutor : IQueryExecutor
         int? offset = null,
         CancellationToken cancellationToken = default)
     {
+        Log.Logger.Debug("ExecutePageAsync called with SQL: {SqlText}, Offset: {Offset}, PageSize: {PageSize}", 
+            sql?.Substring(0, Math.Min(sql.Length, 100)), offset, options.PageSize);
+        
         if (string.IsNullOrWhiteSpace(sql))
         {
+            Log.Logger.Error("ExecutePageAsync called with empty SQL query");
             throw new ArgumentException("SQL query cannot be empty.", nameof(sql));
         }
 
@@ -123,6 +140,7 @@ public sealed class QueryExecutor : IQueryExecutor
         var fetchStopwatch = new Stopwatch();
 
         using var connection = _connectionFactory.CreateConnection();
+        Log.Logger.Debug("Opening connection for page query execution");
         await connection.OpenAsync(cancellationToken);
 
         // Add pagination if offset is specified
@@ -130,16 +148,20 @@ public sealed class QueryExecutor : IQueryExecutor
         if (offset.HasValue)
         {
             paginatedSql = $"{sql} LIMIT {options.PageSize} OFFSET {offset.Value}";
+            Log.Logger.Debug("Applied pagination with OFFSET: {Offset}, LIMIT: {Limit}", offset.Value, options.PageSize);
         }
         else if (!sql.TrimEnd().EndsWith(";", StringComparison.OrdinalIgnoreCase))
         {
             // Add limit for first page if not already present
             paginatedSql = $"{sql} LIMIT {options.PageSize}";
+            Log.Logger.Debug("Applied initial LIMIT: {Limit} for first page", options.PageSize);
         }
 
         using var command = connection.CreateCommand();
         command.CommandText = paginatedSql;
+        Log.Logger.Debug("Created command with paginated SQL: {SqlText}", paginatedSql?.Substring(0, Math.Min(paginatedSql.Length, 200)));
 
+        Log.Logger.Debug("Executing command and getting reader");
         using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
         dbStopwatch.Stop();
@@ -151,11 +173,13 @@ public sealed class QueryExecutor : IQueryExecutor
         {
             var name = reader.GetName(i);
             var type = reader.GetFieldType(i);
+            Log.Logger.Debug("Processing column {Index}: {Name} of type {Type}", i, name, type?.Name ?? "unknown");
             columns.Add(new ColumnInfo(name, type?.Name ?? "unknown"));
         }
 
         // Read rows
         var rows = new List<ResultRow>();
+        var rowCount = 0;
         while (await reader.ReadAsync(cancellationToken))
         {
             var values = new Dictionary<string, object?>();
@@ -165,7 +189,9 @@ public sealed class QueryExecutor : IQueryExecutor
                 values[reader.GetName(i)] = value;
             }
             rows.Add(new ResultRow(values));
+            rowCount++;
         }
+        Log.Logger.Debug("Read {RowCount} rows from result set", rowCount);
 
         fetchStopwatch.Stop();
 
@@ -178,6 +204,9 @@ public sealed class QueryExecutor : IQueryExecutor
             DbExecutionTime: dbStopwatch.Elapsed,
             FetchTime: fetchStopwatch.Elapsed,
             UiBindTime: null);
+
+        Log.Logger.Information("Query execution completed: {RowCount} rows, DB: {DbTime}ms, Fetch: {FetchTime}ms", 
+            rows.Count, dbStopwatch.ElapsedMilliseconds, fetchStopwatch.ElapsedMilliseconds);
 
         return new QueryResult(columns, rows, timings, totalCount);
     }

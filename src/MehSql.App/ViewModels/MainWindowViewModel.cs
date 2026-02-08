@@ -8,6 +8,7 @@ using MehSql.Core.Export;
 using MehSql.Core.Querying;
 using MehSql.Core.Schema;
 using ReactiveUI;
+using Serilog;
 
 namespace MehSql.App.ViewModels;
 
@@ -22,6 +23,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel(IConnectionFactory connectionFactory)
     {
         _connectionFactory = connectionFactory;
+        Log.Logger.Information("Initializing MainWindowViewModel with connection factory");
 
         // Initialize commands
         RunQueryCommand = ReactiveCommand.CreateFromTask(RunQueryAsync);
@@ -34,8 +36,11 @@ public sealed class MainWindowViewModel : ViewModelBase
         Results = new ResultsViewModel(queryPager, explainService, exportService);
         SchemaExplorer = new SchemaExplorerViewModel(new SchemaService(connectionFactory));
 
+        Log.Logger.Information("Initialized child view models");
+        
         // Load schema on startup
         _ = SchemaExplorer.LoadAsync();
+        Log.Logger.Information("Started loading schema on startup");
     }
 
     #region Properties
@@ -69,7 +74,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     }
 
     public ResultsViewModel Results { get; }
-    public SchemaExplorerViewModel SchemaExplorer { get; }
+    public SchemaExplorerViewModel SchemaExplorer { get; private set; }
 
     private string? _currentDatabasePath;
     public string? CurrentDatabasePath
@@ -89,8 +94,11 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private async Task RunQueryAsync()
     {
+        Log.Logger.Debug("RunQueryAsync called with SQL: {SqlText}", SqlText?.Substring(0, Math.Min(SqlText.Length, 100)));
+        
         if (string.IsNullOrWhiteSpace(SqlText))
         {
+            Log.Logger.Warning("RunQueryAsync called with empty SQL text");
             ErrorMessage = "Please enter a SQL query.";
             HasError = true;
             return;
@@ -110,21 +118,26 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         try
         {
+            Log.Logger.Information("Executing query: {SqlText}", SqlText?.Substring(0, Math.Min(SqlText.Length, 200)));
             await Results.RunAsync(ct);
+            Log.Logger.Information("Query executed successfully");
         }
         catch (OperationCanceledException)
         {
+            Log.Logger.Information("Query was cancelled by user");
             ErrorMessage = "Query was cancelled.";
             HasError = true;
         }
         catch (Exception ex)
         {
+            Log.Logger.Error(ex, "Error executing query: {ErrorMessage}", ex.Message);
             ErrorMessage = $"Error: {ex.Message}";
             HasError = true;
         }
         finally
         {
             IsExecuting = false;
+            Log.Logger.Debug("RunQueryAsync completed, IsExecuting set to false");
         }
     }
 
@@ -135,8 +148,11 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     public async Task OpenDatabaseAsync(string filePath)
     {
+        Log.Logger.Information("Opening database file: {FilePath}", filePath);
+        
         if (string.IsNullOrEmpty(filePath))
         {
+            Log.Logger.Warning("OpenDatabaseAsync called with null or empty file path");
             return;
         }
 
@@ -144,28 +160,40 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             // Create a new connection factory for the selected file
             var newFactory = new ConnectionFactory(filePath);
+            Log.Logger.Debug("Created new ConnectionFactory for file: {FilePath}", filePath);
+            
             using var conn = newFactory.CreateConnection();
             await conn.OpenAsync();
+            Log.Logger.Information("Successfully opened connection to database: {FilePath}", filePath);
 
             // Update current database path
             CurrentDatabasePath = filePath;
+            Log.Logger.Information("Updated CurrentDatabasePath to: {FilePath}", filePath);
 
             // Reinitialize view models with new connection
             var queryPager = new QueryPager(newFactory);
             var explainService = new ExplainService(newFactory);
             var exportService = new ExportService();
+            var schemaService = new SchemaService(newFactory); // Create new schema service with new connection
+            Log.Logger.Debug("Reinitialized view models with new connection factory");
 
             // Update Results view model
             Results.Sql = SqlText;
 
-            // Reload schema explorer
+            // Replace the schema explorer with a new one using the new connection
+            SchemaExplorer = new SchemaExplorerViewModel(schemaService);
+            Log.Logger.Information("Created new SchemaExplorerViewModel with updated schema service");
+            
             await SchemaExplorer.LoadAsync();
+            Log.Logger.Information("Schema explorer loaded successfully for database: {FilePath}", filePath);
 
             ErrorMessage = null;
             HasError = false;
+            Log.Logger.Information("Database {FilePath} opened successfully", filePath);
         }
         catch (Exception ex)
         {
+            Log.Logger.Error(ex, "Failed to open database {FilePath}: {ErrorMessage}", filePath, ex.Message);
             ErrorMessage = $"Failed to open database: {ex.Message}";
             HasError = true;
         }
@@ -173,8 +201,11 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     public async Task CreateDatabaseAsync(string filePath)
     {
+        Log.Logger.Information("Creating new database file: {FilePath}", filePath);
+        
         if (string.IsNullOrEmpty(filePath))
         {
+            Log.Logger.Warning("CreateDatabaseAsync called with null or empty file path");
             return;
         }
 
@@ -182,25 +213,40 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             // DecentDB will create the file if it doesn't exist
             var newFactory = new ConnectionFactory(filePath);
+            Log.Logger.Debug("Created new ConnectionFactory for file: {FilePath}", filePath);
+            
             using var conn = newFactory.CreateConnection();
             await conn.OpenAsync();
+            Log.Logger.Information("Successfully opened connection to new database: {FilePath}", filePath);
 
             // Update current database path
             CurrentDatabasePath = filePath;
+            Log.Logger.Information("Updated CurrentDatabasePath to: {FilePath}", filePath);
 
             // Reinitialize view models with new connection
             var queryPager = new QueryPager(newFactory);
             var explainService = new ExplainService(newFactory);
             var exportService = new ExportService();
+            var schemaService = new SchemaService(newFactory); // Create new schema service with new connection
+            Log.Logger.Debug("Reinitialized view models with new connection factory");
 
-            // Reload schema explorer to show empty database
+            // Update Results view model
+            Results.Sql = SqlText;
+
+            // Replace the schema explorer with a new one using the new connection
+            SchemaExplorer = new SchemaExplorerViewModel(schemaService);
+            Log.Logger.Information("Created new SchemaExplorerViewModel with updated schema service");
+            
             await SchemaExplorer.LoadAsync();
+            Log.Logger.Information("Schema explorer loaded successfully for new database: {FilePath}", filePath);
 
             ErrorMessage = null;
             HasError = false;
+            Log.Logger.Information("New database {FilePath} created successfully", filePath);
         }
         catch (Exception ex)
         {
+            Log.Logger.Error(ex, "Failed to create database {FilePath}: {ErrorMessage}", filePath, ex.Message);
             ErrorMessage = $"Failed to create database: {ex.Message}";
             HasError = true;
         }
