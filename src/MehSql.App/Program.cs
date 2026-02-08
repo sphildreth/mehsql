@@ -34,6 +34,11 @@ internal static class Program
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
-            .LogToTrace()
-            .UseReactiveUI();
+            .LogToTrace(Avalonia.Logging.LogEventLevel.Warning)
+            .UseReactiveUI()
+            .AfterSetup(_ =>
+            {
+                // Forward Avalonia binding errors to Serilog
+                Avalonia.Logging.Logger.Sink = new AvaloniaSerilogSink();
+            });
 }

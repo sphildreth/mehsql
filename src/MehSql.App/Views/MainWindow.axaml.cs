@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -23,6 +24,53 @@ public partial class MainWindow : Window
         // Enable drag and drop
         AddHandler(DragDrop.DropEvent, OnDrop);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
+
+        // Rebuild DataGrid columns when the ViewModel's Columns property changes
+        DataContextChanged += (_, _) =>
+        {
+            Serilog.Log.Logger.Debug("MainWindow.DataContextChanged fired, DataContext type: {Type}", DataContext?.GetType().Name ?? "null");
+            if (DataContext is MainWindowViewModel vm)
+            {
+                Serilog.Log.Logger.Debug("Subscribed to Results.PropertyChanged");
+                vm.Results.PropertyChanged += (_, args) =>
+                {
+                    Serilog.Log.Logger.Debug("Results.PropertyChanged fired: {PropertyName}", args.PropertyName);
+                    if (args.PropertyName == nameof(vm.Results.Columns))
+                    {
+                        Serilog.Log.Logger.Debug("Columns changed, rebuilding DataGrid columns. Column count: {Count}", vm.Results.Columns.Count);
+                        RebuildDataGridColumns(vm.Results.Columns, vm.Results.Rows);
+                    }
+                };
+            }
+        };
+    }
+
+    private void RebuildDataGridColumns(
+        System.Collections.Generic.IReadOnlyList<Core.Querying.ColumnInfo> columns,
+        System.Collections.ObjectModel.ObservableCollection<Dictionary<string, object?>> rows)
+    {
+        Serilog.Log.Logger.Debug("RebuildDataGridColumns called with {Count} columns, {RowCount} rows", columns.Count, rows.Count);
+
+        // Detach ItemsSource while rebuilding columns
+        ResultsDataGrid.ItemsSource = null;
+        ResultsDataGrid.Columns.Clear();
+
+        foreach (var col in columns)
+        {
+            var key = col.Name;
+            ResultsDataGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = key,
+                Binding = new Binding($"[{key}]"),
+                IsReadOnly = true
+            });
+        }
+
+        // Re-attach ItemsSource after columns are built
+        ResultsDataGrid.ItemsSource = rows;
+
+        Serilog.Log.Logger.Debug("DataGrid rebuilt: {ColCount} columns, {RowCount} rows bound",
+            ResultsDataGrid.Columns.Count, rows.Count);
     }
 
     private async void OnOpenDatabaseClick(object? sender, RoutedEventArgs e)
@@ -74,9 +122,9 @@ public partial class MainWindow : Window
     private void OnDragOver(object? sender, DragEventArgs e)
     {
         // Check if the drag contains files
-        if (e.Data.Contains(DataFormats.Files))
+        if (e.DataTransfer.Contains(DataFormat.File))
         {
-            var files = e.Data.GetFiles();
+            var files = e.DataTransfer.TryGetFiles();
             if (files != null && files.Any(f => f.Name.EndsWith(".ddb", StringComparison.OrdinalIgnoreCase)))
             {
                 e.DragEffects = DragDropEffects.Copy;
@@ -89,9 +137,9 @@ public partial class MainWindow : Window
     {
         if (DataContext is not MainWindowViewModel vm) return;
 
-        if (e.Data.Contains(DataFormats.Files))
+        if (e.DataTransfer.Contains(DataFormat.File))
         {
-            var files = e.Data.GetFiles();
+            var files = e.DataTransfer.TryGetFiles();
             if (files != null)
             {
                 var ddbFile = files.FirstOrDefault(f => f.Name.EndsWith(".ddb", StringComparison.OrdinalIgnoreCase));

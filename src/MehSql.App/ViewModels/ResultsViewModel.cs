@@ -5,7 +5,6 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using Avalonia.Threading;
 using MehSql.Core.Execution;
 using MehSql.Core.Export;
 using MehSql.Core.Querying;
@@ -42,7 +41,7 @@ public sealed class ResultsViewModel : ViewModelBase
         _exportService = exportService;
     }
 
-    public ObservableCollection<IReadOnlyDictionary<string, object?>> Rows { get; } = new();
+    public ObservableCollection<Dictionary<string, object?>> Rows { get; } = new();
 
     private IReadOnlyList<ColumnInfo> _columns = Array.Empty<ColumnInfo>();
     public IReadOnlyList<ColumnInfo> Columns
@@ -134,15 +133,8 @@ public sealed class ResultsViewModel : ViewModelBase
             var page = await _pager.ExecuteFirstPageAsync(Sql ?? "", new QueryOptions(), ct);
             Log.Logger.Debug("Received page with {RowCount} rows and {ColumnCount} columns", page.Rows.Count, page.Columns.Count);
             
-            // Update UI on the UI thread to avoid threading issues
-            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                Apply(page, isFirstPage: true);
-                Log.Logger.Debug("Applied page data, Rows collection now has {RowCount} items", Rows.Count);
-            }, Avalonia.Threading.DispatcherPriority.Normal);
-            
-            // Small delay to allow UI to refresh
-            await Task.Delay(10);
+            Apply(page, isFirstPage: true);
+            Log.Logger.Debug("Applied page data, Rows collection now has {RowCount} items", Rows.Count);
         }
         catch (Exception ex)
         {
@@ -306,11 +298,13 @@ public sealed class ResultsViewModel : ViewModelBase
     {
         Log.Logger.Debug("ResultsViewModel.Apply called with {RowCount} rows, {ColumnCount} columns, isFirstPage: {IsFirstPage}", 
             page.Rows.Count, page.Columns.Count, isFirstPage);
-        Columns = page.Columns;
         Timings = page.Timings;
         _nextToken = page.NextToken;
         Log.Logger.Debug("Adding {RowCount} rows to Rows collection", page.Rows.Count);
-        foreach (var r in page.Rows) Rows.Add(r);
+        foreach (var r in page.Rows) Rows.Add((Dictionary<string, object?>)r);
+        
+        // Set Columns after Rows so the DataGrid has data when columns are rebuilt
+        Columns = page.Columns;
         
         Log.Logger.Debug("Finished adding rows, Rows collection now has {RowCount} items", Rows.Count);
         if (isFirstPage)

@@ -156,24 +156,18 @@
                 <TextBlock Grid.Row="1" Text="{Binding Results.Rows.Count, StringFormat='{}{0} rows'}" Padding="8,4" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource TextTertiaryBrush}" FontSize="11"/>
 
                 <!-- Results DataGrid with Virtualization -->
-                <Border Grid.Row="2" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
-                  <DataGrid ItemsSource="{Binding Results.Rows}"
-                            AutoGenerateColumns="True"
+                  <DataGrid x:Name="ResultsDataGrid"
+                            Grid.Row="2"
+                            AutoGenerateColumns="False"
                             IsReadOnly="True"
                             GridLinesVisibility="All"
                             BorderThickness="0"
+                            MinHeight="100"
                             Background="{StaticResource SurfaceBrush}"
                             Foreground="{StaticResource TextBrush}"
                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
                             ScrollViewer.VerticalScrollBarVisibility="Auto">
-                    <DataGrid.Styles>
-                      <Style Selector="DataGrid">
-                        <Setter Property="(ScrollViewer.HorizontalScrollBarVisibility)" Value="Auto"/>
-                        <Setter Property="(ScrollViewer.VerticalScrollBarVisibility)" Value="Auto"/>
-                      </Style>
-                    </DataGrid.Styles>
                   </DataGrid>
-                </Border>
               </Grid>
             </TabItem>
 
