@@ -416,6 +416,79 @@ public partial class MainWindow : Window
         _themeManager.ToggleTheme();
     }
 
+    private async void OnImportSqliteClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        // Step 1: Pick SQLite file
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Select SQLite Database",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("SQLite Databases") { Patterns = ["*.db", "*.sqlite", "*.sqlite3"] },
+                new FilePickerFileType("All Files") { Patterns = ["*"] }
+            ]
+        });
+
+        if (files.Count == 0) return;
+        var sqlitePath = files[0].Path.LocalPath;
+
+        // Step 2: Analyze
+        var service = new MehSql.Core.Import.SqliteImportService();
+        MehSql.Core.Import.AnalysisResult analysis;
+        try
+        {
+            analysis = await Task.Run(() => service.AnalyzeAsync(sqlitePath));
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Failed to analyze SQLite database: {Path}", sqlitePath);
+            var errorWin = new Window
+            {
+                Title = "Import Error",
+                Width = 420, Height = 160,
+                CanResize = false,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Background = Avalonia.Media.Brushes.Black,
+                Content = new StackPanel
+                {
+                    Margin = new Avalonia.Thickness(20),
+                    Spacing = 12,
+                    Children =
+                    {
+                        new TextBlock { Text = $"Failed to analyze SQLite database:\n{ex.Message}", Foreground = Avalonia.Media.Brushes.White, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                        new Button { Content = "OK", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right, Padding = new Avalonia.Thickness(20, 6) }
+                    }
+                }
+            };
+            ((Button)((StackPanel)errorWin.Content).Children[1]).Click += (_, _) => errorWin.Close();
+            await errorWin.ShowDialog(this);
+            return;
+        }
+
+        // Step 3: Show options dialog
+        var optionsDialog = new ImportOptionsDialog();
+        optionsDialog.Initialize(sqlitePath, analysis);
+        await optionsDialog.ShowDialog(this);
+
+        if (optionsDialog.Result is not { } importOptions) return;
+
+        // Step 4: Show progress dialog and run import
+        var progressDialog = new ImportProgressDialog();
+        // Show dialog and run import concurrently
+        var showTask = progressDialog.ShowDialog(this);
+        await progressDialog.RunImportAsync(importOptions);
+        await showTask;
+
+        // Step 5: If successful, open the new .ddb file
+        if (progressDialog.Report is not null)
+        {
+            await vm.OpenDatabaseAsync(importOptions.DecentDbPath);
+        }
+    }
+
     private void OnExitClick(object? sender, RoutedEventArgs e)
     {
         Close();

@@ -5,6 +5,9 @@
     <RootNamespace>MehSql.Core</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="MehSql.Core.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="DecentDB.AdoNet">
       <HintPath>..\..\..\decentdb\bindings\dotnet\src\DecentDB.MicroOrm\bin\Release\net10.0\DecentDB.AdoNet.dll</HintPath>
       <Private>True</Private>
@@ -19,6 +22,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.2" />
     <PackageReference Include="Serilog" Version="4.3.0" />
   </ItemGroup>
 </Project>

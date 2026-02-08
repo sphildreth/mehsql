@@ -1,0 +1,52 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="MehSql.App.Views.ImportOptionsDialog"
+        Title="Import SQLite Database"
+        Width="560" Height="360"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="#1E1E2E">
+  <StackPanel Margin="24" Spacing="14">
+    <TextBlock Text="Import SQLite Database" FontSize="20" FontWeight="Bold" Foreground="#CDD6F4"/>
+    <Separator Background="#45475A"/>
+
+    <!-- Source Path -->
+    <StackPanel Spacing="4">
+      <TextBlock Text="Source SQLite File:" Foreground="#A6ADC8" FontSize="12"/>
+      <TextBox x:Name="SourcePathText" IsReadOnly="True" Foreground="#CDD6F4" Background="#313244"/>
+    </StackPanel>
+
+    <!-- Destination Path -->
+    <StackPanel Spacing="4">
+      <TextBlock Text="Destination DecentDB File:" Foreground="#A6ADC8" FontSize="12"/>
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBox x:Name="DestPathText" Grid.Column="0" Foreground="#CDD6F4" Background="#313244"/>
+        <Button x:Name="BrowseButton" Grid.Column="1" Content="Browse..." Margin="6,0,0,0" Padding="12,6" Click="OnBrowseClick"/>
+      </Grid>
+    </StackPanel>
+
+    <!-- Options -->
+    <StackPanel Orientation="Horizontal" Spacing="24">
+      <CheckBox x:Name="LowercaseCheck" Content="Lowercase identifiers" IsChecked="True" Foreground="#CDD6F4"/>
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBlock Text="Batch size:" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+        <NumericUpDown x:Name="BatchSizeInput" Value="5000" Minimum="100" Maximum="100000" Increment="1000" Width="120"
+                       FormatString="N0" Foreground="#CDD6F4" Background="#313244"/>
+      </StackPanel>
+    </StackPanel>
+
+    <!-- Preview -->
+    <Border Background="#313244" CornerRadius="4" Padding="12" BorderBrush="#45475A" BorderThickness="1">
+      <StackPanel Spacing="4">
+        <TextBlock Text="Preview" FontWeight="SemiBold" Foreground="#A6ADC8" FontSize="12"/>
+        <TextBlock x:Name="PreviewText" Foreground="#CDD6F4" FontSize="12" Text="Analyzing..." TextWrapping="Wrap"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Buttons -->
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,4,0,0">
+      <Button x:Name="ImportButton" Content="Import" Padding="24,6" Click="OnImportClick" IsEnabled="False"/>
+      <Button Content="Cancel" Padding="24,6" Click="OnCancelClick"/>
+    </StackPanel>
+  </StackPanel>
+</Window>
