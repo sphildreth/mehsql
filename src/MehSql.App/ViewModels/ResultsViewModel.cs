@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Avalonia.Threading;
 using MehSql.Core.Execution;
 using MehSql.Core.Export;
 using MehSql.Core.Querying;
@@ -132,8 +133,16 @@ public sealed class ResultsViewModel : ViewModelBase
             Log.Logger.Debug("Cleared existing rows");
             var page = await _pager.ExecuteFirstPageAsync(Sql ?? "", new QueryOptions(), ct);
             Log.Logger.Debug("Received page with {RowCount} rows and {ColumnCount} columns", page.Rows.Count, page.Columns.Count);
-            Apply(page, isFirstPage: true);
-            Log.Logger.Debug("Applied page data, Rows collection now has {RowCount} items", Rows.Count);
+            
+            // Update UI on the UI thread to avoid threading issues
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                Apply(page, isFirstPage: true);
+                Log.Logger.Debug("Applied page data, Rows collection now has {RowCount} items", Rows.Count);
+            }, Avalonia.Threading.DispatcherPriority.Normal);
+            
+            // Small delay to allow UI to refresh
+            await Task.Delay(10);
         }
         catch (Exception ex)
         {
@@ -302,6 +311,7 @@ public sealed class ResultsViewModel : ViewModelBase
         _nextToken = page.NextToken;
         Log.Logger.Debug("Adding {RowCount} rows to Rows collection", page.Rows.Count);
         foreach (var r in page.Rows) Rows.Add(r);
+        
         Log.Logger.Debug("Finished adding rows, Rows collection now has {RowCount} items", Rows.Count);
         if (isFirstPage)
         {

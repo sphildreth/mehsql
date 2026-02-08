@@ -252,7 +252,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         }
     }
     
-    private void GenerateSelectTopRowsSql(string tableName)
+    private async void GenerateSelectTopRowsSql(string tableName)
     {
         Log.Logger.Information("Generating SELECT TOP 1000 query for table: {TableName}", tableName);
         try
@@ -260,8 +260,9 @@ public sealed class MainWindowViewModel : ViewModelBase
             var sql = $"SELECT * FROM \"{tableName}\" LIMIT 1000;";
             SqlText = sql;
             
-            // Trigger the query execution
-            _ = Task.Run(async () => await RunQueryAsync());
+            // Trigger the query execution directly on the current thread
+            // The RunQueryAsync method handles async operations internally
+            await RunQueryAsync();
         }
         catch (Exception ex)
         {
