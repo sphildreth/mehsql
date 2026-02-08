@@ -9,6 +9,7 @@
         x:DataType="vm:MainWindowViewModel"
         DragDrop.AllowDrop="True"
         Width="1400" Height="900"
+        WindowStartupLocation="Manual"
         Title="MehSQL - Phase 2">
 
   <Design.DataContext>

@@ -359,13 +359,6 @@ public sealed class SqliteImportService
 
     internal static void ValidateSupported(SqliteTable table)
     {
-        var pkCols = table.Columns.Where(c => c.IsPrimaryKey).ToList();
-        if (pkCols.Count > 1)
-        {
-            throw new ConversionException(
-                $"Composite primary key not supported by DecentDB: {table.Name} ({string.Join(", ", pkCols.Select(c => c.Name))})");
-        }
-
         var fkByFrom = table.ForeignKeys
             .GroupBy(fk => fk.FromColumn)
             .Where(g => g.Count() > 1)
@@ -540,6 +533,8 @@ public sealed class SqliteImportService
     {
         var fkMap = table.ForeignKeys.ToDictionary(fk => fk.FromColumn);
         var dstTable = tableNameMap[table.Name];
+        var pkCols = table.Columns.Where(c => c.IsPrimaryKey).ToList();
+        var compositePk = pkCols.Count > 1;
         var colDefs = new List<string>();
 
         foreach (var col in table.Columns)
@@ -547,9 +542,13 @@ public sealed class SqliteImportService
             var dstCol = columnNameMap[table.Name][col.Name];
             var parts = new List<string> { QuoteIdentifier(dstCol), MapDeclaredTypeToDecentDb(col.DeclaredType) };
 
-            if (col.IsPrimaryKey)
+            if (col.IsPrimaryKey && !compositePk)
             {
                 parts.Add("PRIMARY KEY");
+            }
+            else if (col.IsPrimaryKey && compositePk)
+            {
+                parts.Add("NOT NULL");
             }
             else
             {
@@ -567,6 +566,13 @@ public sealed class SqliteImportService
             }
 
             colDefs.Add(string.Join(" ", parts));
+        }
+
+        if (compositePk)
+        {
+            var pkColNames = string.Join(", ", pkCols.Select(c =>
+                QuoteIdentifier(columnNameMap[table.Name][c.Name])));
+            colDefs.Add($"PRIMARY KEY ({pkColNames})");
         }
 
         return $"CREATE TABLE {QuoteIdentifier(dstTable)} ({string.Join(", ", colDefs)})";

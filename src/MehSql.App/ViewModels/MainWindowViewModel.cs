@@ -24,6 +24,11 @@ public sealed class MainWindowViewModel : ViewModelBase
     private readonly SettingsService _settingsService;
     private CancellationTokenSource? _cancellationTokenSource;
 
+    /// <summary>
+    /// Exposes the settings service for window position persistence.
+    /// </summary>
+    public SettingsService SettingsService => _settingsService;
+
     public MainWindowViewModel(IConnectionFactory connectionFactory)
         : this(connectionFactory, new SettingsService())
     {

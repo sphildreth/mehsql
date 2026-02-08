@@ -44,6 +44,10 @@ public partial class MainWindow : Window
         // Set up SQL syntax highlighting
         InitializeSqlEditor();
 
+        // Restore saved window position/size and save on close
+        Opened += OnWindowOpened;
+        Closing += OnWindowClosing;
+
         // Rebuild results table when Columns changes; populate recent files menu
         DataContextChanged += (_, _) =>
         {
@@ -92,6 +96,67 @@ public partial class MainWindow : Window
         var textMate = SqlEditor.InstallTextMate(registryOptions);
         var sqlLang = registryOptions.GetLanguageByExtension(".sql");
         textMate.SetGrammar(registryOptions.GetScopeByLanguageId(sqlLang.Id));
+    }
+
+    private void OnWindowOpened(object? sender, EventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+            return;
+
+        var bounds = vm.SettingsService.Settings.Window;
+        if (bounds is null)
+            return;
+
+        // Restore maximized state
+        if (Enum.TryParse<WindowState>(bounds.State, out var state) && state == WindowState.Maximized)
+        {
+            // Position first so it maximizes on the correct screen
+            Position = new PixelPoint((int)bounds.X, (int)bounds.Y);
+            WindowState = WindowState.Maximized;
+            return;
+        }
+
+        // Validate the saved position is on a visible screen
+        var screens = Screens;
+        var savedCenter = new PixelPoint((int)(bounds.X + bounds.Width / 2), (int)(bounds.Y + bounds.Height / 2));
+        var onScreen = screens.All.Any(s => s.Bounds.Contains(savedCenter));
+
+        if (onScreen)
+        {
+            Position = new PixelPoint((int)bounds.X, (int)bounds.Y);
+            Width = bounds.Width;
+            Height = bounds.Height;
+        }
+    }
+
+    private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+            return;
+
+        // Save position from the Normal state bounds (not maximized bounds)
+        var wb = new WindowBounds
+        {
+            Width = Width,
+            Height = Height,
+            State = WindowState.ToString()
+        };
+
+        // When maximized, save the position before maximizing so we restore to the right screen
+        if (WindowState == WindowState.Maximized)
+        {
+            // Use current position — on most platforms this is the maximized screen origin
+            wb.X = Position.X;
+            wb.Y = Position.Y;
+        }
+        else
+        {
+            wb.X = Position.X;
+            wb.Y = Position.Y;
+        }
+
+        vm.SettingsService.Settings.Window = wb;
+        vm.SettingsService.Save();
     }
 
     private void RebuildRecentFilesMenu(MainWindowViewModel vm)

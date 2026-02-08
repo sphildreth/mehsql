@@ -108,17 +108,16 @@ public sealed class SqliteImportServiceTests
     #region Validation
 
     [Fact]
-    public void ValidateSupported_RejectsCompositePrimaryKey()
+    public void ValidateSupported_AcceptsCompositePrimaryKey()
     {
         var table = new SqliteTable("test", [
             new("a", "INT", false, true),
             new("b", "INT", false, true)
         ], [], [], []);
 
-        var ex = Assert.Throws<ConversionException>(() =>
-            SqliteImportService.ValidateSupported(table));
-
-        Assert.Contains("Composite primary key", ex.Message);
+        // Composite PKs are now supported via table-level PRIMARY KEY constraint
+        var ex = Record.Exception(() => SqliteImportService.ValidateSupported(table));
+        Assert.Null(ex);
     }
 
     [Fact]
