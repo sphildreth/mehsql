@@ -259,6 +259,8 @@ public sealed class SqliteImportService
             throw new ConversionException($"Table has no columns: {tableName}");
 
         // Foreign keys via PRAGMA foreign_key_list
+        // Columns: id, seq, table, from, to, on_update, on_delete, match
+        // "to" (ordinal 4) can be NULL when FK references PK implicitly
         var foreignKeys = new List<SqliteForeignKey>();
         using (var cmd = conn.CreateCommand())
         {
@@ -268,7 +270,13 @@ public sealed class SqliteImportService
             {
                 var toTable = reader.GetString(2);
                 var fromCol = reader.GetString(3);
-                var toCol = reader.GetString(4);
+                var toCol = reader.IsDBNull(4) ? null : reader.GetString(4);
+
+                // If to_column is null, the FK targets the primary key of the referenced table.
+                // We skip it here since we can't resolve the PK column without querying that table.
+                if (toCol is null)
+                    continue;
+
                 foreignKeys.Add(new SqliteForeignKey(fromCol, toTable, toCol));
             }
         }
@@ -304,8 +312,20 @@ public sealed class SqliteImportService
                     idxCmd.CommandText = $"PRAGMA index_info({QuoteIdentifier(idxName)})";
                     using var idxReader = idxCmd.ExecuteReader();
                     while (idxReader.Read())
+                    {
+                        // Ordinal 2 (column name) can be NULL for expression indexes
+                        if (idxReader.IsDBNull(2))
+                        {
+                            skipped.Add(new SkippedIndex(idxName, tableName, "Expression index not supported"));
+                            indexCols.Clear();
+                            break;
+                        }
                         indexCols.Add(idxReader.GetString(2));
+                    }
                 }
+
+                if (indexCols.Count == 0)
+                    continue;
 
                 if (indexCols.Count != 1)
                 {

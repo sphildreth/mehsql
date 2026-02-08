@@ -124,9 +124,33 @@ public sealed class SchemaService : ISchemaService
     public async Task<IReadOnlyList<ViewNode>> GetViewsAsync(CancellationToken ct = default)
     {
         Log.Logger.Debug("GetViewsAsync called");
-        // DecentDB does not currently have native view support — views are not exposed
-        // through ListTablesJson or GetSchema. Return empty list until DecentDB adds view APIs.
-        return new List<ViewNode>();
+        var views = new List<ViewNode>();
+
+        try
+        {
+            using var connection = _connectionFactory.CreateConnection();
+            await connection.OpenAsync(ct);
+
+            // DecentDB supports views but GetSchema("Views") isn't implemented.
+            // Query the internal views catalog via SQL instead.
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = "SELECT name FROM views ORDER BY name";
+            using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                var viewName = reader.GetString(0);
+                Log.Logger.Debug("Found view: {ViewName}", viewName);
+                views.Add(new ViewNode("main", viewName));
+            }
+        }
+        catch (Exception ex)
+        {
+            // DecentDB may not support the views catalog query yet — fail gracefully
+            Log.Logger.Debug(ex, "Could not query views catalog: {Message}", ex.Message);
+        }
+
+        Log.Logger.Information("Successfully retrieved {ViewCount} views", views.Count);
+        return views;
     }
 
     public async Task<IReadOnlyList<ColumnNode>> GetTableColumnsAsync(string schema, string tableName, CancellationToken ct = default)
@@ -203,11 +227,6 @@ public sealed class SchemaService : ISchemaService
             }
 
             Log.Logger.Information("Successfully retrieved {IndexCount} indexes for table: {TableName}", indexes.Count, tableName);
-        }
-        catch (EntryPointNotFoundException)
-        {
-            // Native library doesn't support listing indexes yet
-            Log.Logger.Debug("decentdb_list_indexes_json not available in native library, skipping indexes for {TableName}", tableName);
         }
         catch (Exception ex)
         {
