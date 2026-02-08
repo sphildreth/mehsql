@@ -1,12 +1,7 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using ReactiveUI;
 
 namespace MehSql.App.ViewModels;
 
-public abstract class ViewModelBase : INotifyPropertyChanged
+public abstract class ViewModelBase : ReactiveObject
 {
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    protected void RaisePropertyChanged([CallerMemberName] string? name = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

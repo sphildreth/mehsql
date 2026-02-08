@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
 using MehSql.Core.Querying;
+using ReactiveUI;
 
 namespace MehSql.App.ViewModels;
 
@@ -19,15 +20,27 @@ public sealed class ResultsViewModel : ViewModelBase
     public ObservableCollection<IReadOnlyDictionary<string, object?>> Rows { get; } = new();
 
     private IReadOnlyList<ColumnInfo> _columns = Array.Empty<ColumnInfo>();
-    public IReadOnlyList<ColumnInfo> Columns { get => _columns; private set { _columns = value; RaisePropertyChanged(); } }
+    public IReadOnlyList<ColumnInfo> Columns 
+    { 
+        get => _columns; 
+        private set => this.RaiseAndSetIfChanged(ref _columns, value); 
+    }
 
     private QueryPageToken? _nextToken;
 
     private QueryTimings? _timings;
-    public QueryTimings? Timings { get => _timings; private set { _timings = value; RaisePropertyChanged(); } }
+    public QueryTimings? Timings 
+    { 
+        get => _timings; 
+        private set => this.RaiseAndSetIfChanged(ref _timings, value); 
+    }
 
     private bool _isBusy;
-    public bool IsBusy { get => _isBusy; private set { _isBusy = value; RaisePropertyChanged(); } }
+    public bool IsBusy 
+    { 
+        get => _isBusy; 
+        private set => this.RaiseAndSetIfChanged(ref _isBusy, value); 
+    }
 
     public string Sql { get; set; } = "SELECT 1;";
 

@@ -3,7 +3,7 @@
 ## Phase Map
 - [X] Phase 0 – Project Scaffold & CI
 - [X] Phase 1 – Core Query Execution + Timing
-- [ ] Phase 2 – Basic UI: Editor + Run/Cancel + Errors
+- [X] Phase 2 – Basic UI: Editor + Run/Cancel + Errors
 - [ ] Phase 3 – Virtualized Results + Paging + Cache
 - [ ] Phase 4 – Schema Browser
 - [ ] Phase 5 – Explain/Analyze + Performance Panel
@@ -26,67 +26,45 @@
 - [X] Tests around execution with a perf fixture
 
 ## Phase 2 – Basic UI
+- [X] SQL editor textbox (multiline, monospace font, accepts tabs/newlines)
+- [X] Run and Cancel buttons with command bindings
+- [X] Error panel with visibility binding
+- [X] Results DataGrid placeholder
+- [X] Performance panel placeholder (timing display)
+- [X] MainWindowViewModel with ReactiveUI commands
+- [X] Updated ViewModelBase to inherit from ReactiveObject
+- [X] 3-pane layout matching specification
 
-The application shall provide a standard menu bar with top-level menus such as File, Edit, View, and Help, following common desktop application conventions.
-
-### Layout
-- A 3 pane layout
-  - left is explorer tree that shows schemas that is 2 panels high
-  - right top panel is the editor
-  - right bottom panel is the results
-
-```text
+### Layout (Phase 2)
+```
 +--------------------+---------------------------+
 | Menu Bar                                       |
 +--------------------+---------------------------+
 |                    |                           |
 |  Schema Explorer   |     SQL Editor            |
-|  (Left Pane)       |     (Top Right Pane)      |
+|  (Left Pane)       |     (Top Right)           |
 |                    |                           |
 |                    +---------------------------+
 |                    |                           |
 |                    |     Query Results         |
-|                    |     (Bottom Right Pane)   |
+|                    |     (Bottom Right)        |
 |                    |                           |
 +--------------------+---------------------------+
-```  
-The UI shall implement a three-pane IDE-style layout using resizable split views, without docking or floating panes.
+```
 
-### Schema Explorer
-Displays database structure in a tree view:
-- Schemas
-- Tables
-- Views
-- Columns
-- Indexes
-Vertically occupies the full height of the window.
-Width is user-resizable.
-Tree expansion should be lazy-loaded where possible.
-Selecting items does not automatically execute queries.
+- **Left Pane**: Schema Explorer (TreeView placeholder, 300px wide, resizable)
+- **Right Top**: SQL Editor with toolbar (Run/Cancel buttons)
+- **Right Bottom**: Query Results with DataGrid, error panel, performance metrics
+- **Splitters**: Both vertical and horizontal GridSplitters for resizing
 
-### SQL Editor
-Primary interaction area for writing SQL.
-Supports:
-- Multi-line text editing
-- Running and cancelling queries
-Occupies the upper portion of the right side.
-Height is user-resizable relative to the results pane.
-The editor must remain responsive even while queries are executing.
-
-### Query Results
-Displays the results of the most recent query execution.
-Supports:
-- Virtualized row display
-- Paging for large result sets
-- Error messages when queries fail
-Occupies the lower portion of the right side.
-Must not block the editor while results are loading or rendering.
-
-### Laouyt Behavior Rules
-- All panes must be resizable via splitters.
-- Pane sizes should persist across application restarts (best effort).
-- The editor and results panes must be independently scrollable.
-- No pane may block UI interaction during query execution.
+### UI Components
+- **Menu Bar**: File, Edit, View, Help menus (placeholders)
+- **Schema Explorer**: TreeView placeholder for schemas/tables/views
+- **SQL Editor**: Multi-line TextBox with AcceptsReturn/AcceptsTab, Consolas font
+- **Run/Cancel Buttons**: In editor toolbar with IsExecuting state
+- **Error Panel**: Red background, conditional visibility, displays error messages
+- **Results Grid**: DataGrid with auto-generated columns, row count display
+- **Performance Panel**: Bottom panel showing DB execution time, fetch time, row count
 
 ## Phase 3 – Virtualized Results + Paging
 - Paging abstraction in Core

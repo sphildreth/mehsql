@@ -1,10 +1,142 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MehSql.App.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="MehSql.App.Views.MainWindow"
-        Width="1000" Height="700"
-        Title="MehSQL">
+        x:DataType="vm:MainWindowViewModel"
+        Width="1400" Height="900"
+        Title="MehSQL - Phase 2">
+  
+  <Design.DataContext>
+    <vm:MainWindowViewModel />
+  </Design.DataContext>
+
   <Grid RowDefinitions="Auto,*">
-    <TextBlock Margin="12" FontSize="20" Text="MehSQL — it's fine."/>
-    <TextBlock Grid.Row="1" Margin="12" Text="Scaffold UI. Next: query editor + results grid."/>
+    <!-- Menu Bar -->
+    <Menu Grid.Row="0">
+      <MenuItem Header="_File">
+        <MenuItem Header="_New Connection"/>
+        <MenuItem Header="_Exit"/>
+      </MenuItem>
+      <MenuItem Header="_Edit">
+        <MenuItem Header="_Preferences"/>
+      </MenuItem>
+      <MenuItem Header="_View">
+        <MenuItem Header="_Refresh"/>
+      </MenuItem>
+      <MenuItem Header="_Help">
+        <MenuItem Header="_About"/>
+      </MenuItem>
+    </Menu>
+
+    <!-- Main Content: 3-Pane Layout -->
+    <Grid Grid.Row="1" ColumnDefinitions="300,5,*">
+      
+      <!-- LEFT PANE: Schema Explorer -->
+      <Border Grid.Column="0" BorderBrush="#ccc" BorderThickness="0,0,1,0" Background="#f8f8f8">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Grid.Row="0" Text="Schema Explorer" FontWeight="Bold" Padding="8" Background="#eee"/>
+          <TreeView Grid.Row="1" Margin="4">
+            <TreeViewItem Header="(Schemas - Phase 4)" IsExpanded="True">
+              <TreeViewItem Header="Tables"/>
+              <TreeViewItem Header="Views"/>
+              <TreeViewItem Header="Indexes"/>
+            </TreeViewItem>
+          </TreeView>
+        </Grid>
+      </Border>
+
+      <!-- Splitter -->
+      <GridSplitter Grid.Column="1" Background="#ddd" Width="5" HorizontalAlignment="Stretch"/>
+
+      <!-- RIGHT PANE: Split into Top (Editor) and Bottom (Results) -->
+      <Grid Grid.Column="2" RowDefinitions="*,5,*">
+        
+        <!-- TOP RIGHT: SQL Editor -->
+        <Grid Grid.Row="0" RowDefinitions="Auto,*">
+          <!-- Toolbar -->
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Background="#f0f0f0">
+            <TextBlock Grid.Column="0" Text="SQL Editor" FontWeight="Bold" Padding="8" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="8">
+              <Button Content="Run" Command="{Binding RunQueryCommand}" IsEnabled="{Binding !IsExecuting}" Background="#0078d4" Foreground="White" Padding="12,4"/>
+              <Button Content="Cancel" Command="{Binding CancelQueryCommand}" IsEnabled="{Binding IsExecuting}" Padding="12,4"/>
+              <ProgressBar IsVisible="{Binding IsExecuting}" IsIndeterminate="True" Width="60" VerticalAlignment="Center" Margin="8,0,0,0"/>
+            </StackPanel>
+          </Grid>
+          
+          <!-- Editor TextBox -->
+          <Border Grid.Row="1" BorderBrush="#ddd" BorderThickness="0,1,0,0">
+            <TextBox Text="{Binding SqlText, Mode=TwoWay}"
+                     AcceptsReturn="True"
+                     AcceptsTab="True"
+                     TextWrapping="NoWrap"
+                     FontFamily="Consolas, Monaco, monospace"
+                     FontSize="13"
+                     Padding="8"
+                     Watermark="Enter your SQL query here..."
+                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+          </Border>
+        </Grid>
+
+        <!-- Horizontal Splitter -->
+        <GridSplitter Grid.Row="1" Background="#ddd" Height="5" HorizontalAlignment="Stretch"/>
+
+        <!-- BOTTOM RIGHT: Query Results -->
+        <Grid Grid.Row="2" RowDefinitions="Auto,*,Auto">
+          <!-- Error Panel -->
+          <Border Grid.Row="0" 
+                  Background="#fee" 
+                  BorderBrush="#fcc" 
+                  BorderThickness="0,0,0,1" 
+                  Padding="8"
+                  IsVisible="{Binding HasError}">
+            <StackPanel>
+              <TextBlock Text="Error" FontWeight="Bold" Foreground="#c00" FontSize="12"/>
+              <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="#800" FontSize="12" Margin="0,2,0,0"/>
+            </StackPanel>
+          </Border>
+
+          <!-- Results Header -->
+          <Grid Grid.Row="1" Background="#f8f8f8" RowDefinitions="Auto,*">
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Background="#eee">
+              <TextBlock Grid.Column="0" Text="Query Results" FontWeight="Bold" Padding="8"/>
+              <TextBlock Grid.Column="1" Text="{Binding Results.Rows.Count, StringFormat='{}{0} rows'}" Padding="8" Opacity="0.6"/>
+            </Grid>
+            
+            <!-- Results DataGrid -->
+            <Border Grid.Row="1" BorderBrush="#ddd" BorderThickness="0,1,0,0">
+              <DataGrid ItemsSource="{Binding Results.Rows}"
+                        AutoGenerateColumns="True"
+                        IsReadOnly="True"
+                        GridLinesVisibility="All"
+                        BorderThickness="0">
+              </DataGrid>
+            </Border>
+          </Grid>
+
+          <!-- Performance Panel (Bottom) -->
+          <Border Grid.Row="2" Background="#f0f0f0" BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="8">
+            <StackPanel Orientation="Horizontal" Spacing="24">
+              <StackPanel>
+                <TextBlock Text="DB Execution" Opacity="0.7" FontSize="10"/>
+                <TextBlock Text="{Binding Results.Timings.DbExecutionTime, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12"/>
+              </StackPanel>
+              <StackPanel>
+                <TextBlock Text="Fetch Time" Opacity="0.7" FontSize="10"/>
+                <TextBlock Text="{Binding Results.Timings.FetchTime, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12"/>
+              </StackPanel>
+              <StackPanel>
+                <TextBlock Text="Rows" Opacity="0.7" FontSize="10"/>
+                <TextBlock Text="{Binding Results.Rows.Count}" FontWeight="SemiBold" FontSize="12"/>
+              </StackPanel>
+              <TextBlock Text="(Phase 5 will enhance performance panel)" Opacity="0.5" FontSize="10" VerticalAlignment="Center" FontStyle="Italic"/>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Grid>
+    </Grid>
   </Grid>
 </Window>
