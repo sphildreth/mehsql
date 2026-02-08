@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using MehSql.Core.Connections;
-using MehSql.Core.Execution;
 
 namespace MehSql.Core.Execution;
 
@@ -35,9 +33,10 @@ public sealed class ExplainService : IExplainService
         using var conn = _connectionFactory.CreateConnection();
         await conn.OpenAsync(ct);
 
-        // Build EXPLAIN query
-        var explainPrefix = analyze ? "EXPLAIN (ANALYZE, FORMAT JSON)" : "EXPLAIN (FORMAT JSON)";
-        var explainSql = $"{explainPrefix} {sql}";
+        // Build EXPLAIN query — DecentDB supports plain EXPLAIN but not FORMAT options
+        var explainPrefix = analyze ? "EXPLAIN ANALYZE" : "EXPLAIN";
+        var cleanSql = sql.TrimEnd().TrimEnd(';');
+        var explainSql = $"{explainPrefix} {cleanSql}";
 
         using var cmd = conn.CreateCommand();
         cmd.CommandText = explainSql;
@@ -46,170 +45,29 @@ public sealed class ExplainService : IExplainService
         try
         {
             using var reader = await cmd.ExecuteReaderAsync(ct);
-            if (await reader.ReadAsync(ct))
+            var lines = new List<string>();
+            while (await reader.ReadAsync(ct))
             {
-                rawOutput = reader.GetString(0);
+                lines.Add(reader.GetString(0));
             }
+            rawOutput = string.Join(Environment.NewLine, lines);
         }
         catch (Exception ex)
         {
-            // DecentDB may not support EXPLAIN ANALYZE
-            // Return a placeholder with the error message
             return new QueryExecutionPlan
             {
-                RawOutput = $"EXPLAIN not supported: {ex.Message}",
+                RawOutput = $"EXPLAIN failed: {ex.Message}",
                 IsAnalyzed = analyze,
                 PlanningTime = null,
                 ExecutionTime = null
             };
         }
 
-        // Try to parse the JSON output
-        try
+        // Return the raw text output — DecentDB returns plain text, not JSON
+        return new QueryExecutionPlan
         {
-            return ParseExplainOutput(rawOutput, analyze);
-        }
-        catch
-        {
-            // If parsing fails, return raw output
-            return new QueryExecutionPlan
-            {
-                RawOutput = rawOutput,
-                IsAnalyzed = analyze
-            };
-        }
-    }
-
-    private static QueryExecutionPlan ParseExplainOutput(string json, bool isAnalyzed)
-    {
-        var plan = new QueryExecutionPlan
-        {
-            RawOutput = json,
-            IsAnalyzed = isAnalyzed
+            RawOutput = rawOutput,
+            IsAnalyzed = analyze
         };
-
-        try
-        {
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-
-            // PostgreSQL EXPLAIN FORMAT JSON returns an array with one element
-            if (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0)
-            {
-                root = root[0];
-            }
-
-            if (root.TryGetProperty("Plan", out var planElement))
-            {
-                plan.Plan = ParsePlanNode(planElement);
-            }
-
-            if (root.TryGetProperty("Planning Time", out var planningTimeElement))
-            {
-                plan.PlanningTime = planningTimeElement.GetDouble();
-            }
-
-            if (root.TryGetProperty("Execution Time", out var executionTimeElement))
-            {
-                plan.ExecutionTime = executionTimeElement.GetDouble();
-            }
-        }
-        catch
-        {
-            // Leave plan empty if parsing fails
-        }
-
-        return plan;
-    }
-
-    private static PlanNode ParsePlanNode(JsonElement element)
-    {
-        var node = new PlanNode();
-
-        if (element.TryGetProperty("Node Type", out var nodeType))
-        {
-            node.NodeType = nodeType.GetString() ?? "";
-        }
-
-        if (element.TryGetProperty("Relation Name", out var relationName))
-        {
-            node.RelationName = relationName.GetString();
-        }
-
-        if (element.TryGetProperty("Schema", out var schema))
-        {
-            node.Schema = schema.GetString();
-        }
-
-        if (element.TryGetProperty("Index Name", out var indexName))
-        {
-            node.IndexName = indexName.GetString();
-        }
-
-        if (element.TryGetProperty("Join Type", out var joinType))
-        {
-            node.JoinType = joinType.GetString();
-        }
-
-        if (element.TryGetProperty("Startup Cost", out var startupCost))
-        {
-            node.StartupCost = startupCost.GetDouble();
-        }
-
-        if (element.TryGetProperty("Total Cost", out var totalCost))
-        {
-            node.TotalCost = totalCost.GetDouble();
-        }
-
-        if (element.TryGetProperty("Plan Rows", out var planRows))
-        {
-            node.PlanRows = planRows.GetInt64();
-        }
-
-        if (element.TryGetProperty("Plan Width", out var planWidth))
-        {
-            node.PlanWidth = planWidth.GetInt32();
-        }
-
-        if (element.TryGetProperty("Actual Startup Time", out var actualStartupTime))
-        {
-            node.ActualStartupTime = actualStartupTime.GetDouble();
-        }
-
-        if (element.TryGetProperty("Actual Total Time", out var actualTotalTime))
-        {
-            node.ActualTotalTime = actualTotalTime.GetDouble();
-        }
-
-        if (element.TryGetProperty("Actual Rows", out var actualRows))
-        {
-            node.ActualRows = actualRows.GetInt64();
-        }
-
-        if (element.TryGetProperty("Actual Loops", out var actualLoops))
-        {
-            node.ActualLoops = actualLoops.GetInt64();
-        }
-
-        if (element.TryGetProperty("Output", out var output))
-        {
-            node.Output = output.GetString();
-        }
-
-        if (element.TryGetProperty("Filter", out var filter))
-        {
-            node.Filter = filter.GetString();
-        }
-
-        // Parse child plans
-        if (element.TryGetProperty("Plans", out var plans))
-        {
-            foreach (var childPlan in plans.EnumerateArray())
-            {
-                node.Plans.Add(ParsePlanNode(childPlan));
-            }
-        }
-
-        return node;
     }
 }

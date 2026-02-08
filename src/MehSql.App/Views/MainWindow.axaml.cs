@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -54,6 +55,8 @@ public partial class MainWindow : Window
 
     private void RebuildResultsTable(ResultsViewModel results)
     {
+        var sw = Stopwatch.StartNew();
+
         ResultsHeaderRow.Children.Clear();
         ResultsItemsControl.ItemsSource = null;
         ResultsItemsControl.ItemTemplate = null;
@@ -68,6 +71,9 @@ public partial class MainWindow : Window
         BuildItemTemplate();
         ResultsItemsControl.ItemsSource = results.Rows;
         SyncHeaderScroll();
+
+        sw.Stop();
+        results.SetUiBindTime(sw.Elapsed);
     }
 
     private void BuildHeader()
@@ -88,10 +94,16 @@ public partial class MainWindow : Window
             // Resize grip between columns
             var grip = new Border
             {
-                Width = 4,
+                Width = 6,
                 Cursor = new Cursor(StandardCursorType.SizeWestEast),
                 Background = Brushes.Transparent,
-                Tag = i
+                Tag = i,
+                Child = new Border
+                {
+                    Width = 1,
+                    Background = new SolidColorBrush(Color.Parse("#555555")),
+                    HorizontalAlignment = HorizontalAlignment.Center
+                }
             };
             grip.PointerPressed += OnGripPointerPressed;
             grip.PointerMoved += OnGripPointerMoved;
@@ -121,7 +133,7 @@ public partial class MainWindow : Window
                 // Spacer matching the grip width
                 if (i < columns.Count - 1)
                 {
-                    panel.Children.Add(new Border { Width = 4 });
+                    panel.Children.Add(new Border { Width = 6 });
                 }
             }
             return panel;

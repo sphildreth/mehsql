@@ -38,15 +38,14 @@ public class ExplainServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task ExplainAsync_ReturnsPlan_WhenExplainNotSupported()
+    public async Task ExplainAsync_ReturnsPlan()
     {
         var service = new ExplainService(_connectionFactory);
         var plan = await service.ExplainAsync("SELECT 1", default);
 
         Assert.NotNull(plan);
         Assert.NotNull(plan.RawOutput);
-        // Should contain error message since EXPLAIN not supported
-        Assert.Contains("not supported", plan.RawOutput);
+        Assert.NotEmpty(plan.RawOutput);
         Assert.False(plan.IsAnalyzed);
     }
 

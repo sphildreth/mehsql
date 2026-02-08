@@ -221,15 +221,15 @@
               <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="24">
                 <StackPanel>
                   <TextBlock Text="DB Execution" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock Text="{Binding Results.Timings.DbExecutionTime, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
+                  <TextBlock Text="{Binding Results.Timings.DbExecutionTime.TotalMilliseconds, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
                 </StackPanel>
                 <StackPanel>
                   <TextBlock Text="Fetch Time" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock Text="{Binding Results.Timings.FetchTime, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
+                  <TextBlock Text="{Binding Results.Timings.FetchTime.TotalMilliseconds, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
                 </StackPanel>
                 <StackPanel>
                   <TextBlock Text="UI Bind" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock Text="{Binding Results.Timings.UiBindTime, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
+                  <TextBlock Text="{Binding Results.Timings.UiBindTime.TotalMilliseconds, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
                 </StackPanel>
                 <StackPanel>
                   <TextBlock Text="Total" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>

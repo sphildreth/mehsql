@@ -301,6 +301,17 @@ public sealed class ResultsViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Called by the view after rebuilding the results table to record UI bind time.
+    /// </summary>
+    public void SetUiBindTime(TimeSpan elapsed)
+    {
+        if (Timings is not null)
+        {
+            Timings = new QueryTimings(Timings.DbExecutionTime, Timings.FetchTime, elapsed);
+        }
+    }
+
     private void Apply(QueryPage page, bool isFirstPage)
     {
         Timings = page.Timings;
