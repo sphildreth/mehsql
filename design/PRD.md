@@ -91,9 +91,21 @@ All significant architectural/technical decisions **must** be captured as ADRs.
 - New contributors can understand key design decisions by reading ADRs.
 - CI validates build + tests on Windows/macOS/Linux.
 
-## Open Questions
+## Open Questions~~~~
 - Distribution strategy (zip vs installer).
 - ~~How to best detect/measure UI render time in a consistent way.~~
   - **Decision**: Use both approaches—`Stopwatch` instrumentation around virtualization 
     binding logic *and* UI framework render callbacks where available. This provides 
     both high-level timing and framework-specific insights.
+
+## Similar Tools
+- [DB Browser for SQLite](https://sqlitebrowser.org/): SQLite-focused, simple, but lacks PostgreSQL dialect support and performance transparency features.
+- [DBVisualizer](https://www.dbvis.com/): Java-based, supports multiple DBs, but lacks performance transparency features and may be resource-intensive.
+- [DBeaver](https://dbeaver.io/): Open-source, supports many DBs, but can be slow with large datasets.
+- [DataGrip](https://www.jetbrains.com/datagrip/): Feature-rich, but heavy and not DecentDB-specific.
+- [HeidiSQL](https://www.heidisql.com/): MySQL-focused, but supports PostgreSQL and lacks performance transparency features.
+- [SQL Workbench/J](https://www.sql-workbench.eu/): Lightweight Java-based client, but not optimized for DecentDB or large result sets.
+- [SQLiteBrowser](https://sqlitebrowser.org/): SQLite-focused, simple, but lacks PostgreSQL dialect support and performance transparency features.
+- [SQuirreL SQL](https://squirrel-sql.org/): Java-based, supports multiple DBs, but lacks performance transparency features and may be resource-intensive.
+- [Toad for PostgreSQL](https://www.toadworld.com/platforms/postgresql/default.aspx): PostgreSQL-focused, but lacks performance transparency features and may be resource-intensive.
+- [pgAdmin](https://www.pgadmin.org/): PostgreSQL-focused, but not designed for embedded engines and can be resource-heavy.
