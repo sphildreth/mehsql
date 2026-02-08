@@ -13,7 +13,8 @@ namespace MehSql.App.ViewModels;
 /// </summary>
 public sealed class SchemaExplorerViewModel : ViewModelBase
 {
-    private readonly ISchemaService _schemaService;
+    private ISchemaService _schemaService;
+    private Action<string>? _onSelectTopRows;
 
     public ObservableCollection<SchemaNodeViewModel> RootNodes { get; } = new();
 
@@ -40,10 +41,17 @@ public sealed class SchemaExplorerViewModel : ViewModelBase
 
     public ICommand RefreshCommand { get; }
 
-    public SchemaExplorerViewModel(ISchemaService schemaService)
+    public SchemaExplorerViewModel(ISchemaService schemaService, Action<string>? onSelectTopRows = null)
     {
         _schemaService = schemaService ?? throw new ArgumentNullException(nameof(schemaService));
+        _onSelectTopRows = onSelectTopRows;
         RefreshCommand = ReactiveCommand.CreateFromTask(RefreshAsync);
+    }
+    
+    public void UpdateSchemaService(ISchemaService schemaService, Action<string>? onSelectTopRows = null)
+    {
+        _schemaService = schemaService ?? throw new ArgumentNullException(nameof(schemaService));
+        _onSelectTopRows = onSelectTopRows;
     }
 
     public async Task LoadAsync(CancellationToken ct = default)
@@ -68,7 +76,7 @@ public sealed class SchemaExplorerViewModel : ViewModelBase
                 var tablesNode = new SchemaNodeViewModel("Tables", "Folder", null);
                 foreach (var table in schema.Tables)
                 {
-                    var tableVm = new SchemaNodeViewModel(table.Name, "Table", table);
+                    var tableVm = new SchemaNodeViewModel(table.Name, "Table", table, _onSelectTopRows);
 
                     // Add columns
                     foreach (var col in table.Columns)
@@ -133,11 +141,19 @@ public sealed class SchemaNodeViewModel : ViewModelBase
     public string NodeType { get; }
     public object? Model { get; }
     public ObservableCollection<SchemaNodeViewModel> Children { get; } = new();
+    
+    public ICommand? SelectTopRowsCommand { get; }
 
-    public SchemaNodeViewModel(string displayName, string nodeType, object? model)
+    public SchemaNodeViewModel(string displayName, string nodeType, object? model, Action<string>? onSelectTopRows = null)
     {
         DisplayName = displayName ?? throw new ArgumentNullException(nameof(displayName));
         NodeType = nodeType ?? throw new ArgumentNullException(nameof(nodeType));
         Model = model;
+        
+        // Only create the command for table nodes
+        if (nodeType == "Table" && onSelectTopRows != null)
+        {
+            SelectTopRowsCommand = ReactiveCommand.Create(() => onSelectTopRows(displayName));
+        }
     }
 }

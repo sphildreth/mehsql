@@ -34,7 +34,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         var explainService = new ExplainService(connectionFactory);
         var exportService = new ExportService();
         Results = new ResultsViewModel(queryPager, explainService, exportService);
-        SchemaExplorer = new SchemaExplorerViewModel(new SchemaService(connectionFactory));
+        SchemaExplorer = new SchemaExplorerViewModel(new SchemaService(connectionFactory), GenerateSelectTopRowsSql);
 
         Log.Logger.Information("Initialized child view models");
         
@@ -177,13 +177,13 @@ public sealed class MainWindowViewModel : ViewModelBase
             var schemaService = new SchemaService(newFactory); // Create new schema service with new connection
             Log.Logger.Debug("Reinitialized view models with new connection factory");
 
-            // Update Results view model
+            // Update Results view model with new services
+            Results.UpdateServices(queryPager, explainService, exportService);
             Results.Sql = SqlText;
+            Log.Logger.Information("Updated ResultsViewModel with new connection");
 
-            // Replace the schema explorer with a new one using the new connection
-            SchemaExplorer = new SchemaExplorerViewModel(schemaService);
-            Log.Logger.Information("Created new SchemaExplorerViewModel with updated schema service");
-            
+            // Update the schema explorer with the new schema service and callback
+            SchemaExplorer.UpdateSchemaService(schemaService, GenerateSelectTopRowsSql);
             await SchemaExplorer.LoadAsync();
             Log.Logger.Information("Schema explorer loaded successfully for database: {FilePath}", filePath);
 
@@ -233,8 +233,8 @@ public sealed class MainWindowViewModel : ViewModelBase
             // Update Results view model
             Results.Sql = SqlText;
 
-            // Replace the schema explorer with a new one using the new connection
-            SchemaExplorer = new SchemaExplorerViewModel(schemaService);
+            // Update the schema explorer with the new schema service and callback
+            SchemaExplorer.UpdateSchemaService(schemaService, GenerateSelectTopRowsSql);
             Log.Logger.Information("Created new SchemaExplorerViewModel with updated schema service");
             
             await SchemaExplorer.LoadAsync();
@@ -248,6 +248,25 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             Log.Logger.Error(ex, "Failed to create database {FilePath}: {ErrorMessage}", filePath, ex.Message);
             ErrorMessage = $"Failed to create database: {ex.Message}";
+            HasError = true;
+        }
+    }
+    
+    private void GenerateSelectTopRowsSql(string tableName)
+    {
+        Log.Logger.Information("Generating SELECT TOP 1000 query for table: {TableName}", tableName);
+        try
+        {
+            var sql = $"SELECT * FROM \"{tableName}\" LIMIT 1000;";
+            SqlText = sql;
+            
+            // Trigger the query execution
+            _ = Task.Run(async () => await RunQueryAsync());
+        }
+        catch (Exception ex)
+        {
+            Log.Logger.Error(ex, "Error executing SELECT TOP 1000 query for table {TableName}: {ErrorMessage}", tableName, ex.Message);
+            ErrorMessage = $"Error executing query: {ex.Message}";
             HasError = true;
         }
     }

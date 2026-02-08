@@ -9,6 +9,7 @@ using MehSql.Core.Execution;
 using MehSql.Core.Export;
 using MehSql.Core.Querying;
 using ReactiveUI;
+using Serilog;
 
 namespace MehSql.App.ViewModels;
 
@@ -17,9 +18,9 @@ namespace MehSql.App.ViewModels;
 /// </summary>
 public sealed class ResultsViewModel : ViewModelBase
 {
-    private readonly IQueryPager _pager;
-    private readonly IExplainService _explainService;
-    private readonly IExportService _exportService;
+    private IQueryPager _pager;
+    private IExplainService _explainService;
+    private IExportService _exportService;
 
     public ResultsViewModel(IQueryPager pager, IExplainService explainService, IExportService exportService)
     {
@@ -31,6 +32,13 @@ public sealed class ResultsViewModel : ViewModelBase
         ExplainAnalyzeCommand = ReactiveCommand.CreateFromTask(ExplainAnalyzeAsync);
         ExportToCsvCommand = ReactiveCommand.CreateFromTask<string>(ExportToCsvAsync);
         ExportToJsonCommand = ReactiveCommand.CreateFromTask<string>(ExportToJsonAsync);
+    }
+    
+    public void UpdateServices(IQueryPager pager, IExplainService explainService, IExportService exportService)
+    {
+        _pager = pager;
+        _explainService = explainService;
+        _exportService = exportService;
     }
 
     public ObservableCollection<IReadOnlyDictionary<string, object?>> Rows { get; } = new();
@@ -116,12 +124,21 @@ public sealed class ResultsViewModel : ViewModelBase
 
     public async Task RunAsync(CancellationToken ct)
     {
+        Log.Logger.Debug("ResultsViewModel.RunAsync called with SQL: {SqlText}", Sql?.Substring(0, Math.Min(Sql?.Length ?? 0, 100)) ?? "");
         IsBusy = true;
         try
         {
             Rows.Clear();
-            var page = await _pager.ExecuteFirstPageAsync(Sql, new QueryOptions(), ct);
+            Log.Logger.Debug("Cleared existing rows");
+            var page = await _pager.ExecuteFirstPageAsync(Sql ?? "", new QueryOptions(), ct);
+            Log.Logger.Debug("Received page with {RowCount} rows and {ColumnCount} columns", page.Rows.Count, page.Columns.Count);
             Apply(page, isFirstPage: true);
+            Log.Logger.Debug("Applied page data, Rows collection now has {RowCount} items", Rows.Count);
+        }
+        catch (Exception ex)
+        {
+            Log.Logger.Error(ex, "Error in RunAsync: {ErrorMessage}", ex.Message);
+            throw;
         }
         finally { IsBusy = false; }
     }
@@ -278,13 +295,18 @@ public sealed class ResultsViewModel : ViewModelBase
 
     private void Apply(QueryPage page, bool isFirstPage)
     {
+        Log.Logger.Debug("ResultsViewModel.Apply called with {RowCount} rows, {ColumnCount} columns, isFirstPage: {IsFirstPage}", 
+            page.Rows.Count, page.Columns.Count, isFirstPage);
         Columns = page.Columns;
         Timings = page.Timings;
         _nextToken = page.NextToken;
+        Log.Logger.Debug("Adding {RowCount} rows to Rows collection", page.Rows.Count);
         foreach (var r in page.Rows) Rows.Add(r);
+        Log.Logger.Debug("Finished adding rows, Rows collection now has {RowCount} items", Rows.Count);
         if (isFirstPage)
         {
             HasOrderingWarning = !DetectOrdering(Sql);
+            Log.Logger.Debug("Set HasOrderingWarning to {HasOrderingWarning}", HasOrderingWarning);
         }
     }
 }
