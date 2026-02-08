@@ -1,0 +1,26 @@
+<Project>
+  <PropertyGroup>
+    <!-- Version Information -->
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionSuffix>alpha</VersionSuffix>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    
+    <!-- Package Information (when we eventually publish to NuGet) -->
+    <Authors>MehSQL Contributors</Authors>
+    <Company>MehSQL</Company>
+    <Product>MehSQL</Product>
+    <Description>A lightweight SQL client for DecentDB - Phase 1 (Core Query Execution)</Description>
+    <Copyright>Copyright © 2026 MehSQL Contributors</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/anomalyco/mehsql</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/anomalyco/mehsql</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    
+    <!-- Build Configuration -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+</Project>

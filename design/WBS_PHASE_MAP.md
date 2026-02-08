@@ -1,7 +1,7 @@
 # MehSQL – Phase Map & Work Breakdown Structure
 
 ## Phase Map
-- [ ] Phase 0 – Project Scaffold & CI
+- [X] Phase 0 – Project Scaffold & CI
 - [ ] Phase 1 – Core Query Execution + Timing
 - [ ] Phase 2 – Basic UI: Editor + Run/Cancel + Errors
 - [ ] Phase 3 – Virtualized Results + Paging + Cache
@@ -12,12 +12,12 @@
 ---
 
 ## Phase 0 – Project Scaffold & CI
-- .NET 10 solution
-- Avalonia 11 app project
-- CI matrix for Windows/macOS/Linux:
-  - restore/build/test
-  - basic smoke tests
-- ADRs directory present and documented
+- [X] .NET 10 solution
+- [X] Avalonia 11 app project
+- [X] CI matrix for Windows/macOS/Linux:
+  - [X] restore/build/test
+  - [X] basic smoke tests
+- [X] ADRs directory present and documented
 
 ## Phase 1 – Core Query Execution + Timing
 - Connection/open database

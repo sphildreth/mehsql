@@ -39,6 +39,29 @@ design/adr        → Architecture Decision Records (mandatory)
 
 Violating these boundaries requires an ADR.
 
+### DecentDB API Preference (Very Important)
+
+**Always prefer `DecentDB.MicroOrm` over `DecentDB.AdoNet`.**
+
+- MehSQL is a **showcase app** for the C# DecentDB.MicroOrm API
+- Use `DecentDBContext` as the primary entry point for database operations
+- For typed/entity queries, use `DbSet<T>` through `context.Set<T>()`
+- For raw SQL execution (required for a SQL editor), use `DecentDBConnection` directly through a factory pattern
+- Encapsulate all database access behind abstractions (`IDbContextFactory`, `IQueryExecutor`) to allow flexibility
+
+### DecentDB SQL Syntax
+
+**DecentDB uses PostgreSQL-compatible syntax.**
+
+When writing raw SQL queries for DecentDB:
+- Use PostgreSQL syntax (not SQLite, not SQL Server, not MySQL)
+- Use `LIMIT` and `OFFSET` for pagination (not `TOP` or `FETCH FIRST`)
+- Use `||` for string concatenation
+- Use `TRUE`/`FALSE` for boolean literals
+- Use `SERIAL` or `GENERATED ALWAYS AS IDENTITY` for auto-increment columns
+- Use `TIMESTAMP` or `TIMESTAMPTZ` for date/time types
+- Avoid SQLite-specific features like `AUTOINCREMENT` or `INTEGER PRIMARY KEY` rowid aliases
+
 ---
 
 ## 3. ADR Rules (Very Important)

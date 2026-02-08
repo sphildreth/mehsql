@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
     <OutputType>WinExe</OutputType>
     <AssemblyName>MehSql.App</AssemblyName>
     <RootNamespace>MehSql.App</RootNamespace>
