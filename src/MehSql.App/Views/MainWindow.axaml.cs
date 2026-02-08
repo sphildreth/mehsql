@@ -1,21 +1,32 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Data;
+using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using MehSql.App.Services;
 using MehSql.App.ViewModels;
+using MehSql.Core.Querying;
 
 namespace MehSql.App.Views;
 
 public partial class MainWindow : Window
 {
     private readonly ThemeManager _themeManager = new ThemeManager();
+    private double[] _columnWidths = [];
+    private IReadOnlyList<ColumnInfo> _currentColumns = [];
+    private bool _scrollSyncAttached;
 
     public MainWindow()
     {
@@ -25,52 +36,224 @@ public partial class MainWindow : Window
         AddHandler(DragDrop.DropEvent, OnDrop);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
 
-        // Rebuild DataGrid columns when the ViewModel's Columns property changes
+        // Rebuild results table when Columns changes
         DataContextChanged += (_, _) =>
         {
-            Serilog.Log.Logger.Debug("MainWindow.DataContextChanged fired, DataContext type: {Type}", DataContext?.GetType().Name ?? "null");
             if (DataContext is MainWindowViewModel vm)
             {
-                Serilog.Log.Logger.Debug("Subscribed to Results.PropertyChanged");
                 vm.Results.PropertyChanged += (_, args) =>
                 {
-                    Serilog.Log.Logger.Debug("Results.PropertyChanged fired: {PropertyName}", args.PropertyName);
                     if (args.PropertyName == nameof(vm.Results.Columns))
                     {
-                        Serilog.Log.Logger.Debug("Columns changed, rebuilding DataGrid columns. Column count: {Count}", vm.Results.Columns.Count);
-                        RebuildDataGridColumns(vm.Results.Columns, vm.Results.Rows);
+                        RebuildResultsTable(vm.Results);
                     }
                 };
             }
         };
     }
 
-    private void RebuildDataGridColumns(
-        System.Collections.Generic.IReadOnlyList<Core.Querying.ColumnInfo> columns,
-        System.Collections.ObjectModel.ObservableCollection<Dictionary<string, object?>> rows)
+    private void RebuildResultsTable(ResultsViewModel results)
     {
-        Serilog.Log.Logger.Debug("RebuildDataGridColumns called with {Count} columns, {RowCount} rows", columns.Count, rows.Count);
+        ResultsHeaderRow.Children.Clear();
+        ResultsItemsControl.ItemsSource = null;
+        ResultsItemsControl.ItemTemplate = null;
+        _scrollSyncAttached = false;
 
-        // Detach ItemsSource while rebuilding columns
-        ResultsDataGrid.ItemsSource = null;
-        ResultsDataGrid.Columns.Clear();
+        if (results.Columns.Count == 0) return;
 
-        foreach (var col in columns)
+        _currentColumns = results.Columns;
+        _columnWidths = ComputeColumnWidths(_currentColumns, results.Rows);
+
+        BuildHeader();
+        BuildItemTemplate();
+        ResultsItemsControl.ItemsSource = results.Rows;
+        SyncHeaderScroll();
+    }
+
+    private void BuildHeader()
+    {
+        ResultsHeaderRow.Children.Clear();
+        for (var i = 0; i < _currentColumns.Count; i++)
         {
-            var key = col.Name;
-            ResultsDataGrid.Columns.Add(new DataGridTextColumn
+            // Column header text
+            ResultsHeaderRow.Children.Add(new TextBlock
             {
-                Header = key,
-                Binding = new Binding($"[{key}]"),
-                IsReadOnly = true
+                Text = _currentColumns[i].Name,
+                Width = _columnWidths[i],
+                FontWeight = FontWeight.SemiBold,
+                Padding = new Thickness(6, 4),
+                TextTrimming = TextTrimming.CharacterEllipsis
             });
+
+            // Resize grip between columns
+            var grip = new Border
+            {
+                Width = 4,
+                Cursor = new Cursor(StandardCursorType.SizeWestEast),
+                Background = Brushes.Transparent,
+                Tag = i
+            };
+            grip.PointerPressed += OnGripPointerPressed;
+            grip.PointerMoved += OnGripPointerMoved;
+            grip.PointerReleased += OnGripPointerReleased;
+            ResultsHeaderRow.Children.Add(grip);
+        }
+    }
+
+    private void BuildItemTemplate()
+    {
+        var widths = _columnWidths;
+        var columns = _currentColumns;
+        ResultsItemsControl.ItemTemplate = new FuncDataTemplate<Dictionary<string, object?>>((row, _) =>
+        {
+            if (row is null) return new TextBlock();
+            var panel = new StackPanel { Orientation = Orientation.Horizontal };
+            for (var i = 0; i < columns.Count; i++)
+            {
+                var val = row.TryGetValue(columns[i].Name, out var v) ? v?.ToString() ?? "" : "";
+                panel.Children.Add(new TextBlock
+                {
+                    Text = val,
+                    Width = widths[i],
+                    Padding = new Thickness(6, 3),
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                });
+                // Spacer matching the grip width
+                if (i < columns.Count - 1)
+                {
+                    panel.Children.Add(new Border { Width = 4 });
+                }
+            }
+            return panel;
+        });
+    }
+
+    /// <summary>
+    /// Syncs the header ScrollViewer with the ListBox's internal horizontal scroll.
+    /// </summary>
+    private void SyncHeaderScroll()
+    {
+        if (_scrollSyncAttached) return;
+
+        ResultsItemsControl.TemplateApplied += (_, _) =>
+        {
+            var sv = ResultsItemsControl.GetVisualDescendants()
+                .OfType<ScrollViewer>()
+                .FirstOrDefault();
+            if (sv is null) return;
+
+            sv.ScrollChanged += (_, _) =>
+            {
+                HeaderScrollViewer.Offset = new Vector(sv.Offset.X, 0);
+            };
+        };
+        _scrollSyncAttached = true;
+    }
+
+    #region Column Resize
+
+    private int _resizingColumnIndex = -1;
+    private Point _resizeStartPoint;
+    private double _resizeStartWidth;
+
+    private void OnGripPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Border grip || grip.Tag is not int colIndex) return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+
+        _resizingColumnIndex = colIndex;
+        _resizeStartPoint = e.GetPosition(this);
+        _resizeStartWidth = _columnWidths[colIndex];
+        e.Pointer.Capture(grip);
+        e.Handled = true;
+    }
+
+    private void OnGripPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_resizingColumnIndex < 0) return;
+
+        var current = e.GetPosition(this);
+        var delta = current.X - _resizeStartPoint.X;
+        var newWidth = Math.Max(40, _resizeStartWidth + delta);
+        _columnWidths[_resizingColumnIndex] = newWidth;
+
+        // Update header TextBlock width (children alternate: TextBlock, Grip, TextBlock, Grip, ...)
+        var headerChild = ResultsHeaderRow.Children[_resizingColumnIndex * 2];
+        if (headerChild is TextBlock tb)
+        {
+            tb.Width = newWidth;
         }
 
-        // Re-attach ItemsSource after columns are built
-        ResultsDataGrid.ItemsSource = rows;
+        // Update all visible row cells
+        UpdateVisibleRowWidths(_resizingColumnIndex, newWidth);
+        e.Handled = true;
+    }
 
-        Serilog.Log.Logger.Debug("DataGrid rebuilt: {ColCount} columns, {RowCount} rows bound",
-            ResultsDataGrid.Columns.Count, rows.Count);
+    private void OnGripPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_resizingColumnIndex < 0) return;
+        e.Pointer.Capture(null);
+        _resizingColumnIndex = -1;
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// Updates the width of a specific column in all currently realized ListBox items.
+    /// </summary>
+    private void UpdateVisibleRowWidths(int colIndex, double newWidth)
+    {
+        // Each row panel has: TextBlock, Spacer, TextBlock, Spacer, ... TextBlock
+        // So TextBlock index = colIndex * 2 (for cols after first, they have spacer before them)
+        var childIndex = colIndex > 0 ? colIndex * 2 : 0;
+
+        foreach (var container in ResultsItemsControl.GetVisualDescendants().OfType<ListBoxItem>())
+        {
+            var presenter = container.GetVisualDescendants().OfType<ContentPresenter>().FirstOrDefault();
+            var panel = presenter?.GetVisualDescendants().OfType<StackPanel>().FirstOrDefault();
+            if (panel is null || childIndex >= panel.Children.Count) continue;
+
+            if (panel.Children[childIndex] is TextBlock tb)
+            {
+                tb.Width = newWidth;
+            }
+        }
+    }
+
+    #endregion
+
+    /// <summary>
+    /// Computes column widths by sampling the first 50 rows to find a reasonable width.
+    /// </summary>
+    private static double[] ComputeColumnWidths(
+        IReadOnlyList<ColumnInfo> columns,
+        ObservableCollection<Dictionary<string, object?>> rows)
+    {
+        const double minWidth = 60;
+        const double maxWidth = 400;
+        const double charWidth = 7.5;
+        const double padding = 16;
+
+        var widths = new double[columns.Count];
+        for (var i = 0; i < columns.Count; i++)
+        {
+            // Start with header text width
+            var maxLen = columns[i].Name.Length;
+
+            // Sample first 50 rows
+            var sampleCount = Math.Min(rows.Count, 50);
+            for (var r = 0; r < sampleCount; r++)
+            {
+                if (rows[r].TryGetValue(columns[i].Name, out var val))
+                {
+                    var len = val?.ToString()?.Length ?? 0;
+                    if (len > maxLen) maxLen = len;
+                }
+            }
+
+            widths[i] = Math.Clamp(maxLen * charWidth + padding, minWidth, maxWidth);
+        }
+
+        return widths;
     }
 
     private async void OnOpenDatabaseClick(object? sender, RoutedEventArgs e)

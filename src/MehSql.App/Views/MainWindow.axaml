@@ -103,6 +103,7 @@
                      ScrollViewer.VerticalScrollBarVisibility="Auto">
               <TextBox.KeyBindings>
                 <KeyBinding Gesture="F5" Command="{Binding RunQueryCommand}"/>
+                <KeyBinding Gesture="Ctrl+Return" Command="{Binding RunQueryCommand}"/>
                 <KeyBinding Gesture="Ctrl+Shift+C" Command="{Binding CancelQueryCommand}"/>
               </TextBox.KeyBindings>
             </TextBox>
@@ -143,7 +144,7 @@
           <!-- Results/Explain Tab Control -->
           <TabControl Grid.Row="2">
             <TabItem Header="Results">
-              <Grid RowDefinitions="Auto,Auto,*">
+              <Grid RowDefinitions="Auto,*">
                 <!-- Results Toolbar -->
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Background="{StaticResource SurfaceLightBrush}">
                   <TextBlock Grid.Column="0" Text="Query Results" FontWeight="Bold" Padding="8" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}"/>
@@ -153,21 +154,33 @@
                     <TextBlock Text="{Binding Results.ExportStatus}" VerticalAlignment="Center" Margin="8,0" FontSize="11" Foreground="{StaticResource TextTertiaryBrush}"/>
                   </StackPanel>
                 </Grid>
-                <TextBlock Grid.Row="1" Text="{Binding Results.Rows.Count, StringFormat='{}{0} rows'}" Padding="8,4" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource TextTertiaryBrush}" FontSize="11"/>
 
-                <!-- Results DataGrid with Virtualization -->
-                  <DataGrid x:Name="ResultsDataGrid"
-                            Grid.Row="2"
-                            AutoGenerateColumns="False"
-                            IsReadOnly="True"
-                            GridLinesVisibility="All"
-                            BorderThickness="0"
-                            MinHeight="100"
-                            Background="{StaticResource SurfaceBrush}"
-                            Foreground="{StaticResource TextBrush}"
-                            ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                            ScrollViewer.VerticalScrollBarVisibility="Auto">
-                  </DataGrid>
+
+                <!-- Results Table -->
+                <Grid Grid.Row="1" RowDefinitions="Auto,*">
+                  <!-- Sticky header -->
+                  <Border Grid.Row="0" Background="{StaticResource SurfaceLightBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                    <ScrollViewer x:Name="HeaderScrollViewer" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                      <StackPanel x:Name="ResultsHeaderRow" Orientation="Horizontal"/>
+                    </ScrollViewer>
+                  </Border>
+                  <!-- Virtualized rows -->
+                  <ListBox Grid.Row="1"
+                           x:Name="ResultsItemsControl"
+                           Background="{StaticResource SurfaceBrush}"
+                           Foreground="{StaticResource TextBrush}"
+                           BorderThickness="0"
+                           ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                           ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListBox.Styles>
+                      <Style Selector="ListBoxItem">
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="Margin" Value="0"/>
+                        <Setter Property="MinHeight" Value="0"/>
+                      </Style>
+                    </ListBox.Styles>
+                  </ListBox>
+                </Grid>
               </Grid>
             </TabItem>
 
@@ -230,7 +243,7 @@
                 </StackPanel>
                 <StackPanel>
                   <TextBlock Text="Rows" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock Text="{Binding Results.Rows.Count}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
+                  <TextBlock Text="{Binding Results.RowCount}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
                 </StackPanel>
               </StackPanel>
 

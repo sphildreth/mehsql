@@ -43,6 +43,13 @@ public sealed class ResultsViewModel : ViewModelBase
 
     public ObservableCollection<Dictionary<string, object?>> Rows { get; } = new();
 
+    private int _rowCount;
+    public int RowCount
+    {
+        get => _rowCount;
+        private set => this.RaiseAndSetIfChanged(ref _rowCount, value);
+    }
+
     private IReadOnlyList<ColumnInfo> _columns = Array.Empty<ColumnInfo>();
     public IReadOnlyList<ColumnInfo> Columns
     {
@@ -296,21 +303,16 @@ public sealed class ResultsViewModel : ViewModelBase
 
     private void Apply(QueryPage page, bool isFirstPage)
     {
-        Log.Logger.Debug("ResultsViewModel.Apply called with {RowCount} rows, {ColumnCount} columns, isFirstPage: {IsFirstPage}", 
-            page.Rows.Count, page.Columns.Count, isFirstPage);
         Timings = page.Timings;
         _nextToken = page.NextToken;
-        Log.Logger.Debug("Adding {RowCount} rows to Rows collection", page.Rows.Count);
         foreach (var r in page.Rows) Rows.Add((Dictionary<string, object?>)r);
         
-        // Set Columns after Rows so the DataGrid has data when columns are rebuilt
         Columns = page.Columns;
+        RowCount = Rows.Count;
         
-        Log.Logger.Debug("Finished adding rows, Rows collection now has {RowCount} items", Rows.Count);
         if (isFirstPage)
         {
             HasOrderingWarning = !DetectOrdering(Sql);
-            Log.Logger.Debug("Set HasOrderingWarning to {HasOrderingWarning}", HasOrderingWarning);
         }
     }
 }
