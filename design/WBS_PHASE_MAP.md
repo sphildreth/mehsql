@@ -16,6 +16,16 @@
 - [X] Keyboard shortcuts (F5 to run, Ctrl+Shift+C to cancel)
 - [X] Menu accelerators and InputGesture support
 
+- [X] Phase 7 - Open, New and Drag & Drop
+- [X] File -> Open menu with Ctrl+O shortcut (opens file picker for *.ddb files)
+- [X] File -> New menu with Ctrl+N shortcut (creates new *.ddb file)
+- [X] CurrentDatabasePath property to track open database
+- [X] Drag-and-drop support for .ddb files onto the window
+- [X] OpenDatabaseAsync method with error handling
+- [X] CreateDatabaseAsync method with file creation
+- [X] DragOver and Drop event handlers with visual feedback
+- [X] Unit tests for file operations (with DecentDB integration skipped)
+
 ## Phase 7 - Open, New and Drag & Drop
 - Be able to use File -> Open to open an existing DecentDB File (*.ddb)
 - Be able to use File -> New to create a new DecentDB File (*.ddb)
