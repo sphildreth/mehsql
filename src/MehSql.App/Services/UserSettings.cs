@@ -18,6 +18,12 @@ public sealed class UserSettings
     public string? LastDatabasePath { get; set; }
 
     /// <summary>
+    /// Custom temp folder for decompression and import staging.
+    /// Null or empty = use system default (Path.GetTempPath()).
+    /// </summary>
+    public string? TempFolder { get; set; }
+
+    /// <summary>
     /// Saved window position and size for restoring on next launch.
     /// </summary>
     public WindowBounds? Window { get; set; }

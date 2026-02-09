@@ -1,18 +1,24 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="MehSql.App.Views.ImportOptionsDialog"
-        Title="Import SQLite Database"
-        Width="560" Height="440"
+        Title="Import Database"
+        Width="560" Height="480"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         Background="#1E1E2E">
   <StackPanel Margin="24" Spacing="14">
-    <TextBlock Text="Import SQLite Database" FontSize="20" FontWeight="Bold" Foreground="#CDD6F4"/>
+    <TextBlock x:Name="HeaderText" Text="Import Database" FontSize="20" FontWeight="Bold" Foreground="#CDD6F4"/>
     <Separator Background="#45475A"/>
+
+    <!-- Format -->
+    <StackPanel Orientation="Horizontal" Spacing="6">
+      <TextBlock Text="Format:" Foreground="#A6ADC8" FontSize="12" VerticalAlignment="Center"/>
+      <TextBlock x:Name="FormatText" Foreground="#CDD6F4" FontSize="12" VerticalAlignment="Center"/>
+    </StackPanel>
 
     <!-- Source Path -->
     <StackPanel Spacing="4">
-      <TextBlock Text="Source SQLite File:" Foreground="#A6ADC8" FontSize="12"/>
+      <TextBlock Text="Source:" Foreground="#A6ADC8" FontSize="12"/>
       <TextBox x:Name="SourcePathText" IsReadOnly="True" Foreground="#CDD6F4" Background="#313244"/>
     </StackPanel>
 

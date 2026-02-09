@@ -65,6 +65,44 @@ public partial class ImportProgressDialog : Window
         }
     }
 
+    /// <summary>
+    /// Runs the import using a generic import source (PG dump, MySQL dump, etc.).
+    /// </summary>
+    public async Task RunImportAsync(IImportSource source, GenericImportOptions options)
+    {
+        _stopwatch.Start();
+
+        _elapsedTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _elapsedTimer.Tick += (_, _) => ElapsedLabel.Text = $"Elapsed: {_stopwatch.Elapsed:m\\:ss}";
+        _elapsedTimer.Start();
+
+        var progress = new Progress<ImportProgress>(OnProgressUpdate);
+
+        try
+        {
+            Report = await Task.Run(
+                () => source.ImportAsync(options, progress, _cts.Token),
+                _cts.Token);
+
+            ShowComplete(Report);
+        }
+        catch (OperationCanceledException)
+        {
+            ShowCancelled(options.DecentDbPath);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Import failed: {Message}", ex.Message);
+            ShowFailed(ex);
+        }
+        finally
+        {
+            _stopwatch.Stop();
+            _elapsedTimer?.Stop();
+            ElapsedLabel.Text = $"Elapsed: {_stopwatch.Elapsed:m\\:ss}";
+        }
+    }
+
     private void OnProgressUpdate(ImportProgress p)
     {
         PhaseLabel.Text = p.Phase switch

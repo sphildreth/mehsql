@@ -20,6 +20,7 @@ using AvaloniaEdit;
 using AvaloniaEdit.TextMate;
 using MehSql.App.Services;
 using MehSql.App.ViewModels;
+using MehSql.Core.Import;
 using MehSql.Core.Querying;
 using TextMateSharp.Grammars;
 
@@ -481,77 +482,142 @@ public partial class MainWindow : Window
         _themeManager.ToggleTheme();
     }
 
-    private async void OnImportSqliteClick(object? sender, RoutedEventArgs e)
+    private async void OnImportDatabaseClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm) return;
 
-        // Step 1: Pick SQLite file
+        // Step 1: Pick file
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select SQLite Database",
+            Title = "Select Database or Dump File",
             AllowMultiple = false,
             FileTypeFilter =
             [
+                new FilePickerFileType("All Supported Formats") { Patterns = ["*.db", "*.sqlite", "*.sqlite3", "*.sql", "*.gz", "*.zip", "*.tar.gz", "*.tgz"] },
                 new FilePickerFileType("SQLite Databases") { Patterns = ["*.db", "*.sqlite", "*.sqlite3"] },
+                new FilePickerFileType("SQL Dump Files") { Patterns = ["*.sql"] },
+                new FilePickerFileType("Compressed Archives") { Patterns = ["*.gz", "*.zip", "*.tar.gz", "*.tgz"] },
                 new FilePickerFileType("All Files") { Patterns = ["*"] }
             ]
         });
 
         if (files.Count == 0) return;
-        var sqlitePath = files[0].Path.LocalPath;
+        var filePath = files[0].Path.LocalPath;
 
-        // Step 2: Analyze
-        var service = new MehSql.Core.Import.SqliteImportService();
-        MehSql.Core.Import.AnalysisResult analysis;
+        await ImportFromPathAsync(vm, filePath);
+    }
+
+    private async void OnImportDumpFolderClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Select MySQL Shell Dump Folder",
+            AllowMultiple = false
+        });
+
+        if (folders.Count == 0) return;
+        var folderPath = folders[0].Path.LocalPath;
+
+        await ImportFromPathAsync(vm, folderPath);
+    }
+
+    private async Task ImportFromPathAsync(MainWindowViewModel vm, string inputPath)
+    {
+        string? tempDir = null;
         try
         {
-            analysis = await Task.Run(() => service.AnalyzeAsync(sqlitePath));
-        }
-        catch (Exception ex)
-        {
-            Serilog.Log.Error(ex, "Failed to analyze SQLite database: {Path}", sqlitePath);
-            var errorWin = new Window
+            var extractedPath = inputPath;
+
+            // Step 2: Decompress if needed
+            if (File.Exists(inputPath) && DecompressService.IsCompressed(inputPath))
             {
-                Title = "Import Error",
-                Width = 420, Height = 160,
-                CanResize = false,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Background = Avalonia.Media.Brushes.Black,
-                Content = new StackPanel
-                {
-                    Margin = new Avalonia.Thickness(20),
-                    Spacing = 12,
-                    Children =
-                    {
-                        new TextBlock { Text = $"Failed to analyze SQLite database:\n{ex.Message}", Foreground = Avalonia.Media.Brushes.White, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
-                        new Button { Content = "OK", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right, Padding = new Avalonia.Thickness(20, 6) }
-                    }
-                }
+                var tempBase = vm.SettingsService.Settings.TempFolder ?? Path.GetTempPath();
+                var decompressor = new DecompressService();
+                var result = await decompressor.DecompressAsync(inputPath, tempBase);
+                extractedPath = result.ExtractedPath;
+                tempDir = result.TempDirectory;
+            }
+
+            // Step 3: Detect format
+            var format = ImportFormatDetector.Detect(extractedPath);
+            if (format == ImportFormat.Unknown)
+            {
+                await ShowErrorDialogAsync("Import Error", $"Could not detect the import format for:\n{inputPath}");
+                return;
+            }
+
+            // Step 4: Create appropriate import source and analyze
+            IImportSource source = format switch
+            {
+                ImportFormat.SQLite => new SqliteImportService(),
+                ImportFormat.PgDump => new PgDumpImportSource(),
+                ImportFormat.MysqlDump => new MysqlDumpImportSource(),
+                ImportFormat.MysqlShellDump => new MysqlShellDumpImportSource(),
+                _ => throw new NotSupportedException($"Unsupported format: {format}")
             };
-            ((Button)((StackPanel)errorWin.Content).Children[1]).Click += (_, _) => errorWin.Close();
-            await errorWin.ShowDialog(this);
-            return;
+
+            GenericAnalysisResult analysis;
+            try
+            {
+                analysis = await Task.Run(() => source.AnalyzeAsync(extractedPath));
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "Failed to analyze import source: {Path}", extractedPath);
+                await ShowErrorDialogAsync("Import Error", $"Failed to analyze import source:\n{ex.Message}");
+                return;
+            }
+
+            // Step 5: Show options dialog
+            var optionsDialog = new ImportOptionsDialog();
+            optionsDialog.Initialize(extractedPath, analysis);
+            await optionsDialog.ShowDialog(this);
+
+            if (optionsDialog.GenericResult is not { } importOptions) return;
+
+            // Step 6: Show progress dialog and run import
+            var progressDialog = new ImportProgressDialog();
+            var showTask = progressDialog.ShowDialog(this);
+            await progressDialog.RunImportAsync(source, importOptions);
+            await showTask;
+
+            // Step 7: If successful, open the new .ddb file
+            if (progressDialog.Report is not null)
+            {
+                await vm.OpenDatabaseAsync(importOptions.DecentDbPath);
+            }
         }
-
-        // Step 3: Show options dialog
-        var optionsDialog = new ImportOptionsDialog();
-        optionsDialog.Initialize(sqlitePath, analysis);
-        await optionsDialog.ShowDialog(this);
-
-        if (optionsDialog.Result is not { } importOptions) return;
-
-        // Step 4: Show progress dialog and run import
-        var progressDialog = new ImportProgressDialog();
-        // Show dialog and run import concurrently
-        var showTask = progressDialog.ShowDialog(this);
-        await progressDialog.RunImportAsync(importOptions);
-        await showTask;
-
-        // Step 5: If successful, open the new .ddb file
-        if (progressDialog.Report is not null)
+        finally
         {
-            await vm.OpenDatabaseAsync(importOptions.DecentDbPath);
+            // Cleanup temp directory
+            DecompressService.Cleanup(tempDir);
         }
+    }
+
+    private async Task ShowErrorDialogAsync(string title, string message)
+    {
+        var errorWin = new Window
+        {
+            Title = title,
+            Width = 420, Height = 160,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = Avalonia.Media.Brushes.Black,
+            Content = new StackPanel
+            {
+                Margin = new Avalonia.Thickness(20),
+                Spacing = 12,
+                Children =
+                {
+                    new TextBlock { Text = message, Foreground = Avalonia.Media.Brushes.White, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                    new Button { Content = "OK", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right, Padding = new Avalonia.Thickness(20, 6) }
+                }
+            }
+        };
+        ((Button)((StackPanel)errorWin.Content).Children[1]).Click += (_, _) => errorWin.Close();
+        await errorWin.ShowDialog(this);
     }
 
     private void OnExitClick(object? sender, RoutedEventArgs e)
@@ -561,7 +627,8 @@ public partial class MainWindow : Window
 
     private async void OnPreferencesClick(object? sender, RoutedEventArgs e)
     {
-        var dialog = new PreferencesDialog(_themeManager);
+        var settingsService = (DataContext as MainWindowViewModel)?.SettingsService;
+        var dialog = new PreferencesDialog(_themeManager, settingsService);
         await dialog.ShowDialog(this);
     }
 

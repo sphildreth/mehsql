@@ -37,11 +37,14 @@ public sealed class ImportProgress
 /// </summary>
 public sealed class ImportOptions
 {
-    public required string SqlitePath { get; init; }
+    public required string SourcePath { get; init; }
     public required string DecentDbPath { get; init; }
     public bool LowercaseIdentifiers { get; init; } = true;
     public int CommitBatchSize { get; init; } = 5_000;
     public bool Overwrite { get; init; }
+
+    [Obsolete("Use SourcePath instead")]
+    public string SqlitePath => SourcePath;
 }
 
 /// <summary>
@@ -49,8 +52,9 @@ public sealed class ImportOptions
 /// </summary>
 public sealed class ImportReport
 {
-    public required string SqlitePath { get; init; }
+    public required string SourcePath { get; init; }
     public required string DecentDbPath { get; init; }
+    public ImportFormat Format { get; init; }
     public List<string> Tables { get; init; } = [];
     public Dictionary<string, long> RowsCopied { get; init; } = new();
     public List<string> IndexesCreated { get; init; } = [];
@@ -66,7 +70,7 @@ public sealed class ImportReport
 /// </summary>
 public sealed class AnalysisResult
 {
-    public required string SqlitePath { get; init; }
+    public required string SourcePath { get; init; }
     public List<SqliteTable> Tables { get; init; } = [];
     public Dictionary<string, long> RowCounts { get; init; } = new();
     public long TotalRows => RowCounts.Values.Sum();

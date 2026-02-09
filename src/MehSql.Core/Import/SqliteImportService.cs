@@ -11,9 +11,11 @@ namespace MehSql.Core.Import;
 /// Imports a SQLite database into a DecentDB database file.
 /// Faithfully ports the logic from the Python sqlite_import.py tool.
 /// </summary>
-public sealed class SqliteImportService
+public sealed class SqliteImportService : IImportSource
 {
     private const int FetchBatchSize = 1_000;
+
+    public ImportFormat Format => ImportFormat.SQLite;
 
     /// <summary>
     /// Analyze a SQLite database and return schema + row counts without modifying anything.
@@ -42,12 +44,42 @@ public sealed class SqliteImportService
 
         return new AnalysisResult
         {
-            SqlitePath = sqlitePath,
+            SourcePath = sqlitePath,
             Tables = tables,
             RowCounts = rowCounts,
             SkippedIndexes = skipped,
             Warnings = warnings
         };
+    }
+
+    /// <inheritdoc />
+    async Task<GenericAnalysisResult> IImportSource.AnalyzeAsync(string sourcePath, CancellationToken ct)
+    {
+        var result = await AnalyzeAsync(sourcePath, ct);
+        return new GenericAnalysisResult
+        {
+            SourcePath = sourcePath,
+            Format = ImportFormat.SQLite,
+            TableNames = result.Tables.Select(t => t.Name).ToList(),
+            RowCounts = result.RowCounts,
+            Warnings = result.Warnings,
+            SqliteAnalysis = result
+        };
+    }
+
+    /// <inheritdoc />
+    async Task<ImportReport> IImportSource.ImportAsync(
+        GenericImportOptions options, IProgress<ImportProgress>? progress, CancellationToken ct)
+    {
+        var sqliteOptions = new ImportOptions
+        {
+            SourcePath = options.SourcePath,
+            DecentDbPath = options.DecentDbPath,
+            LowercaseIdentifiers = options.LowercaseIdentifiers,
+            CommitBatchSize = options.CommitBatchSize,
+            Overwrite = options.Overwrite
+        };
+        return await ImportAsync(sqliteOptions, progress, ct);
     }
 
     /// <summary>
@@ -58,8 +90,8 @@ public sealed class SqliteImportService
         IProgress<ImportProgress>? progress = null,
         CancellationToken ct = default)
     {
-        if (!File.Exists(options.SqlitePath))
-            throw new FileNotFoundException("SQLite file not found.", options.SqlitePath);
+        if (!File.Exists(options.SourcePath))
+            throw new FileNotFoundException("SQLite file not found.", options.SourcePath);
 
         if (File.Exists(options.DecentDbPath))
         {
@@ -73,11 +105,12 @@ public sealed class SqliteImportService
         var sw = Stopwatch.StartNew();
         var report = new ImportReport
         {
-            SqlitePath = options.SqlitePath,
-            DecentDbPath = options.DecentDbPath
+            SourcePath = options.SourcePath,
+            DecentDbPath = options.DecentDbPath,
+            Format = ImportFormat.SQLite
         };
 
-        await using var sqliteConn = new SqliteConnection($"Data Source={options.SqlitePath};Mode=ReadOnly");
+        await using var sqliteConn = new SqliteConnection($"Data Source={options.SourcePath};Mode=ReadOnly");
         await sqliteConn.OpenAsync(ct);
         sqliteConn.CreateCommand().Apply(c => { c.CommandText = "PRAGMA foreign_keys=ON"; c.ExecuteNonQuery(); });
 

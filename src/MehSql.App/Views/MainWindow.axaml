@@ -23,7 +23,8 @@
         <MenuItem Header="_New Database" InputGesture="Ctrl+N" Click="OnNewDatabaseClick"/>
         <MenuItem Header="_Open Database" InputGesture="Ctrl+O" Click="OnOpenDatabaseClick"/>
         <MenuItem Header="Open _SQL File" InputGesture="Ctrl+Shift+O" Click="OnOpenSqlFileClick"/>
-        <MenuItem Header="_Import SQLite Database..." Click="OnImportSqliteClick"/>
+        <MenuItem Header="_Import Database..." Click="OnImportDatabaseClick"/>
+        <MenuItem Header="Import MySQL Shell _Dump Folder..." Click="OnImportDumpFolderClick"/>
         <MenuItem Header="_Recent" x:Name="RecentFilesMenu" IsEnabled="False">
           <MenuItem Header="(none)"/>
         </MenuItem>
