@@ -3,7 +3,7 @@
         xmlns:vm="using:MehSql.App.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:AvaloniaEdit="using:AvaloniaEdit"
+        xmlns:controls="using:MehSql.App.Controls"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="MehSql.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -90,23 +90,15 @@
           </Grid>
 
           <!-- SQL Editor with Syntax Highlighting -->
-          <Border Grid.Row="1" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
-            <AvaloniaEdit:TextEditor x:Name="SqlEditor"
-                     FontFamily="Consolas, Monaco, monospace"
-                     FontSize="13"
-                     Padding="8"
-                     Background="{StaticResource SurfaceBrush}"
-                     Foreground="{StaticResource TextBrush}"
-                     ShowLineNumbers="True"
-                     HorizontalScrollBarVisibility="Auto"
-                     VerticalScrollBarVisibility="Auto">
-              <AvaloniaEdit:TextEditor.KeyBindings>
-                <KeyBinding Gesture="F5" Command="{Binding RunQueryCommand}"/>
-                <KeyBinding Gesture="Ctrl+Return" Command="{Binding RunQueryCommand}"/>
-                <KeyBinding Gesture="Ctrl+Shift+C" Command="{Binding CancelQueryCommand}"/>
-              </AvaloniaEdit:TextEditor.KeyBindings>
-            </AvaloniaEdit:TextEditor>
-          </Border>
+          <!-- SQL Editor with Syntax Highlighting -->
+          <controls:HighlightedSqlEditor x:Name="SqlEditor"
+                   Grid.Row="1"
+                   Background="{StaticResource SurfaceBrush}"
+                   BorderBrush="{StaticResource BorderBrush}"
+                   BorderThickness="0,1,0,0"
+                   IsDarkTheme="True"
+                   Loaded="OnSqlEditorLoaded"
+                   Text="{Binding SqlText}" />
         </Grid>
 
         <!-- Horizontal Splitter -->

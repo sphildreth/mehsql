@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="MehSql.App.Controls.HighlightedSqlEditor">
+  <Grid>
+    <!-- Bottom: Editable TextBox (invisible text, shows caret and selection) -->
+    <TextBox Name="Editor"
+             FontFamily="Consolas, Monaco, monospace"
+             FontSize="13"
+             Padding="8"
+             Background="Transparent"
+             Foreground="Transparent"
+             CaretBrush="White"
+             SelectionBrush="#3399FF"
+             SelectionForegroundBrush="White"
+             AcceptsReturn="True"
+             AcceptsTab="True"
+             TextWrapping="NoWrap"
+             BorderThickness="0"
+             Watermark="Enter SQL query here..." />
+    
+    <!-- Top: Syntax-highlighted text (click-through, shows colors) -->
+    <TextBlock Name="HighlightedText"
+               FontFamily="Consolas, Monaco, monospace"
+               FontSize="13"
+               Padding="8"
+               Margin="0,0,0,0"
+               TextWrapping="NoWrap"
+               Background="Transparent"
+               IsHitTestVisible="False" />
+  </Grid>
+</UserControl>

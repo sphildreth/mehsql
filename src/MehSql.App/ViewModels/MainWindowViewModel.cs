@@ -282,23 +282,11 @@ public sealed class MainWindowViewModel : ViewModelBase
         }
     }
     
-    private async void GenerateSelectTopRowsSql(string tableName)
+    private void GenerateSelectTopRowsSql(string tableName)
     {
         Log.Logger.Information("Generating SELECT TOP 1000 query for table: {TableName}", tableName);
-        try
-        {
-            var sql = $"SELECT * FROM \"{tableName}\" LIMIT 1000;";
-            SqlText = sql;
-            
-            // Trigger the query execution directly on the current thread
-            // The RunQueryAsync method handles async operations internally
-            await RunQueryAsync();
-        }
-        catch (Exception ex)
-        {
-            Log.Logger.Error(ex, "Error executing SELECT TOP 1000 query for table {TableName}: {ErrorMessage}", tableName, ex.Message);
-            ErrorMessage = $"Error executing query: {ex.Message}";
-            HasError = true;
-        }
+        var sql = $"SELECT * FROM \"{tableName}\" LIMIT 1000;";
+        SqlText = sql;
+        Log.Logger.Information("Populated SQL Editor with SELECT TOP 1000 query for table: {TableName}", tableName);
     }
 }

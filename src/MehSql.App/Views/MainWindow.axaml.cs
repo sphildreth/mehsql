@@ -15,14 +15,14 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
-using AvaloniaEdit;
-using AvaloniaEdit.TextMate;
 using MehSql.App.Services;
 using MehSql.App.ViewModels;
 using MehSql.Core.Import;
 using MehSql.Core.Querying;
-using TextMateSharp.Grammars;
+using ReactiveUI;
+using Serilog;
 
 namespace MehSql.App.Views;
 
@@ -32,11 +32,12 @@ public partial class MainWindow : Window
     private double[] _columnWidths = [];
     private IReadOnlyList<ColumnInfo> _currentColumns = [];
     private bool _scrollSyncAttached;
-    private bool _suppressEditorSync;
 
     public MainWindow()
     {
+        Log.Logger.Information("MainWindow constructor starting");
         InitializeComponent();
+        Log.Logger.Information("InitializeComponent completed");
 
         // Enable drag and drop
         AddHandler(DragDrop.DropEvent, OnDrop);
@@ -45,9 +46,14 @@ public partial class MainWindow : Window
         // Set up SQL syntax highlighting
         InitializeSqlEditor();
 
+        // Register global keyboard shortcuts
+        RegisterKeyboardShortcuts();
+
         // Restore saved window position/size and save on close
         Opened += OnWindowOpened;
         Closing += OnWindowClosing;
+        
+        Log.Logger.Information("MainWindow constructor completed");
 
         // Rebuild results table when Columns changes; populate recent files menu
         DataContextChanged += (_, _) =>
@@ -68,22 +74,18 @@ public partial class MainWindow : Window
                 // ViewModel → Editor sync
                 vm.PropertyChanged += (_, args) =>
                 {
-                    if (args.PropertyName == nameof(vm.SqlText) && !_suppressEditorSync)
+                    if (args.PropertyName == nameof(vm.SqlText))
                     {
+                        Log.Logger.Debug("SqlText property changed to: {SqlText}", vm.SqlText?.Substring(0, Math.Min(vm.SqlText?.Length ?? 0, 100)));
                         if (SqlEditor.Text != vm.SqlText)
                         {
+                            Log.Logger.Debug("Updating SqlEditor.Text from ViewModel");
                             SqlEditor.Text = vm.SqlText ?? "";
                         }
                     }
                 };
 
-                // Editor → ViewModel sync
-                SqlEditor.TextChanged += (_, _) =>
-                {
-                    _suppressEditorSync = true;
-                    vm.SqlText = SqlEditor.Text;
-                    _suppressEditorSync = false;
-                };
+                // Removed SqlEditor.TextChanged - binding handled by HighlightedSqlEditor internally
 
                 RebuildRecentFilesMenu(vm);
                 vm.RecentFiles.CollectionChanged += (_, _) => RebuildRecentFilesMenu(vm);
@@ -93,10 +95,76 @@ public partial class MainWindow : Window
 
     private void InitializeSqlEditor()
     {
-        var registryOptions = new RegistryOptions(ThemeName.DarkPlus);
-        var textMate = SqlEditor.InstallTextMate(registryOptions);
-        var sqlLang = registryOptions.GetLanguageByExtension(".sql");
-        textMate.SetGrammar(registryOptions.GetScopeByLanguageId(sqlLang.Id));
+        // Event handlers are now attached in XAML
+        // Loaded, PointerPressed, and GotFocus will call their respective handlers
+    }
+
+    private void OnSqlEditorGotFocus(object? sender, RoutedEventArgs e)
+    {
+        Log.Logger.Information("SqlEditor GotFocus event fired");
+    }
+
+    private void OnSqlEditorPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        Log.Logger.Information("SqlEditor PointerPressed event fired");
+        SqlEditor.Focus();
+    }
+
+    private void OnSqlEditorLoaded(object? sender, RoutedEventArgs e)
+    {
+        Log.Information("SqlEditor Loaded - adding Ctrl+Enter keybinding");
+        
+        if (DataContext is MainWindowViewModel vm && sender is Controls.HighlightedSqlEditor editor)
+        {
+            // Add Ctrl+Enter and F5 keybindings for running query
+            editor.AddKeyBinding(new KeyBinding
+            {
+                Gesture = new KeyGesture(Key.Enter, KeyModifiers.Control),
+                Command = vm.RunQueryCommand
+            });
+            editor.AddKeyBinding(new KeyBinding
+            {
+                Gesture = new KeyGesture(Key.F5),
+                Command = vm.RunQueryCommand
+            });
+
+            Log.Information("SQL Editor initialized with Ctrl+Enter and F5 keybindings");
+        }
+    }
+
+    private void RegisterKeyboardShortcuts()
+    {
+        // File menu shortcuts
+        this.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.N, KeyModifiers.Control),
+            Command = ReactiveCommand.Create(() => OnNewDatabaseClick(null, new RoutedEventArgs()))
+        });
+
+        this.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.O, KeyModifiers.Control),
+            Command = ReactiveCommand.Create(() => OnOpenDatabaseClick(null, new RoutedEventArgs()))
+        });
+
+        this.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.O, KeyModifiers.Control | KeyModifiers.Shift),
+            Command = ReactiveCommand.Create(() => OnOpenSqlFileClick(null, new RoutedEventArgs()))
+        });
+
+        // Edit menu shortcuts
+        this.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.OemComma, KeyModifiers.Control),
+            Command = ReactiveCommand.Create(() => OnPreferencesClick(null, new RoutedEventArgs()))
+        });
+
+        this.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.T, KeyModifiers.Control),
+            Command = ReactiveCommand.Create(() => OnToggleThemeClick(null, new RoutedEventArgs()))
+        });
     }
 
     private void OnWindowOpened(object? sender, EventArgs e)
