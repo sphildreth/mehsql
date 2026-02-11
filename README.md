@@ -17,7 +17,7 @@
 ---
 
 <p align="center">
-    <img src="graphics/screenshot.png" alt="MehSQL snapshot..." width="50%" />
+    <img src="graphics/screenshot.png" alt="MehSQL snapshot..." width="75%" />
 </p>
 
 ## Features
