@@ -57,9 +57,29 @@ Pre-built binaries coming soon for:
 ### Quick Start
 
 1. Launch MehSQL
-2. Open a DecentDB database file (`.db`)
+2. Open a DecentDB database file (`.db` or `.ddb`)
 3. Start writing SQL
 4. Press `Ctrl+Enter` (or `Cmd+Enter` on macOS) to execute
+
+### Command-Line Usage
+
+Open a database file directly from the command line:
+
+```bash
+# Open a DecentDB database file
+./mehsql /path/to/database.ddb
+
+# Or with dotnet run
+dotnet run --project src/MehSql.App -- /path/to/database.ddb
+
+# Load a database and SQL file together
+./mehsql /path/to/database.ddb /path/to/query.sql
+```
+
+The application will automatically:
+- Load and open the specified database file
+- Refresh the schema explorer
+- Load any `.sql` files into the query editor
 
 ### Keyboard Shortcuts
 

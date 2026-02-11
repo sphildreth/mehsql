@@ -56,9 +56,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         // Load recent files from settings
         RecentFiles = new ObservableCollection<string>(_settingsService.Settings.RecentFiles);
 
-        // Load schema on startup
-        _ = SchemaExplorer.LoadAsync();
-        Log.Logger.Information("Started loading schema on startup");
+        Log.Logger.Information("MainWindowViewModel initialization complete");
     }
 
     #region Properties

@@ -8,22 +8,9 @@
     <InternalsVisibleTo Include="MehSql.Core.Tests" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="DecentDB.AdoNet">
-      <HintPath>..\..\..\decentdb\bindings\dotnet\src\DecentDB.MicroOrm\bin\Release\net10.0\DecentDB.AdoNet.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="DecentDB.MicroOrm">
-      <HintPath>..\..\..\decentdb\bindings\dotnet\src\DecentDB.MicroOrm\bin\Release\net10.0\DecentDB.MicroOrm.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="DecentDB.Native">
-      <HintPath>..\..\..\decentdb\bindings\dotnet\src\DecentDB.MicroOrm\bin\Release\net10.0\DecentDB.Native.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.2" />
-    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="DecentDB.MicroOrm" Version="1.0.1" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.3" />
+    <PackageReference Include="Serilog" Version="4.3.1" />
     <PackageReference Include="ZstdSharp.Port" Version="0.8.7" />
   </ItemGroup>
 </Project>

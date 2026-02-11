@@ -147,12 +147,13 @@ public class MainWindowViewModelTests
         // Arrange
         var mockFactory = new Mock<IConnectionFactory>();
         var vm = new MainWindowViewModel(mockFactory.Object);
-        var invalidPath = Path.Combine(Path.GetTempPath(), $"nonexistent_{Guid.NewGuid()}.db");
+        // Use a path that cannot be created (invalid directory path)
+        var invalidPath = "/root/cannot_access/nonexistent.db";
 
         // Act
         await vm.OpenDatabaseAsync(invalidPath);
 
-        // Assert - should set error because file doesn't exist
+        // Assert - should set error because directory cannot be accessed
         Assert.True(vm.HasError);
         Assert.NotNull(vm.ErrorMessage);
         Assert.Contains("Failed to open database", vm.ErrorMessage);

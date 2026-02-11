@@ -30,37 +30,71 @@ public sealed class App : Application
                 DataContext = vm
             };
 
-            // Handle command-line arguments: open .ddb or load .sql
-            var ddbArg = desktop.Args?.FirstOrDefault(a =>
-                a.EndsWith(".ddb", StringComparison.OrdinalIgnoreCase) && File.Exists(a));
-            var sqlArg = desktop.Args?.FirstOrDefault(a =>
-                a.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) && File.Exists(a));
+            // Handle command-line arguments
+            string? databaseFileToOpen = null;
+            string? sqlFileToLoad = null;
 
-            if (ddbArg is not null || sqlArg is not null)
+            if (desktop.Args?.Length > 0)
             {
-                // Defer until the window is loaded so the UI is ready
-                desktop.MainWindow.Opened += async (_, _) =>
+                foreach (var arg in desktop.Args)
                 {
-                    try
+                    if (string.IsNullOrWhiteSpace(arg))
                     {
-                        if (ddbArg is not null)
-                        {
-                            Log.Information("Opening database from command-line argument: {Path}", ddbArg);
-                            await vm.OpenDatabaseAsync(Path.GetFullPath(ddbArg));
-                        }
+                        continue;
+                    }
 
-                        if (sqlArg is not null)
+                    var fullPath = Path.GetFullPath(arg);
+                    
+                    if (File.Exists(fullPath))
+                    {
+                        // Check file type by extension
+                        if (arg.EndsWith(".sql", StringComparison.OrdinalIgnoreCase))
                         {
-                            Log.Information("Loading SQL file from command-line argument: {Path}", sqlArg);
-                            vm.SqlText = await File.ReadAllTextAsync(Path.GetFullPath(sqlArg));
+                            sqlFileToLoad = fullPath;
+                            Log.Information("SQL file argument detected: {Path}", fullPath);
+                        }
+                        else if (arg.EndsWith(".ddb", StringComparison.OrdinalIgnoreCase) || 
+                                 databaseFileToOpen == null)
+                        {
+                            // Accept .ddb files or any file as potential database if no database set yet
+                            databaseFileToOpen = fullPath;
+                            Log.Information("Database file argument detected: {Path}", fullPath);
                         }
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        Log.Error(ex, "Error processing command-line arguments");
+                        Log.Warning("Command-line argument file not found: {Path}", arg);
                     }
-                };
+                }
             }
+
+            // Load schema and handle any command-line arguments after window opens
+            desktop.MainWindow.Opened += async (_, _) =>
+            {
+                try
+                {
+                    if (databaseFileToOpen is not null)
+                    {
+                        Log.Information("Opening database from command-line: {Path}", databaseFileToOpen);
+                        await vm.OpenDatabaseAsync(databaseFileToOpen);
+                    }
+                    else
+                    {
+                        // Load initial schema for default temp database
+                        await vm.SchemaExplorer.LoadAsync();
+                    }
+
+                    if (sqlFileToLoad is not null)
+                    {
+                        Log.Information("Loading SQL file from command-line: {Path}", sqlFileToLoad);
+                        vm.SqlText = await File.ReadAllTextAsync(sqlFileToLoad);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error during window initialization or processing command-line arguments");
+                }
+            };
         }
 
         base.OnFrameworkInitializationCompleted();
