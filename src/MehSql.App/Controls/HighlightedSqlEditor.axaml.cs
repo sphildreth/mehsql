@@ -42,6 +42,7 @@ public partial class HighlightedSqlEditor : UserControl
             {
                 if (!_isUpdatingText)
                 {
+                    Log.Debug("Editor TextChanged, updating Text property to: {Text}", (editor.Text ?? string.Empty).Substring(0, Math.Min((editor.Text ?? string.Empty).Length, 100)));
                     Text = editor.Text ?? string.Empty;
                     UpdateHighlighting();
                 }

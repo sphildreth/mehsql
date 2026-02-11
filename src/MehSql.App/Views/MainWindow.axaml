@@ -90,7 +90,6 @@
           </Grid>
 
           <!-- SQL Editor with Syntax Highlighting -->
-          <!-- SQL Editor with Syntax Highlighting -->
           <controls:HighlightedSqlEditor x:Name="SqlEditor"
                    Grid.Row="1"
                    Background="{StaticResource SurfaceBrush}"
@@ -98,7 +97,7 @@
                    BorderThickness="0,1,0,0"
                    IsDarkTheme="True"
                    Loaded="OnSqlEditorLoaded"
-                   Text="{Binding SqlText}" />
+                   Text="{Binding SqlText, Mode=TwoWay}" />
         </Grid>
 
         <!-- Horizontal Splitter -->

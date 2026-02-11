@@ -65,7 +65,11 @@ public sealed class MainWindowViewModel : ViewModelBase
     public string SqlText
     {
         get => _sqlText;
-        set => this.RaiseAndSetIfChanged(ref _sqlText, value);
+        set
+        {
+            Log.Logger.Debug("SqlText property setter called with: {Value}", value?.Substring(0, Math.Min(value?.Length ?? 0, 100)) ?? "(null)");
+            this.RaiseAndSetIfChanged(ref _sqlText, value ?? string.Empty);
+        }
     }
 
     private bool _isExecuting;
