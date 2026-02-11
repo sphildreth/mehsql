@@ -16,6 +16,10 @@
 
 ---
 
+<p align="center">
+    <img src="graphics/screenshot.png" alt="MehSQL snapshot..." width="50%" />
+</p>
+
 ## Features
 
 - 🚀 **Fast & Lightweight** – Built for speed, not bloat

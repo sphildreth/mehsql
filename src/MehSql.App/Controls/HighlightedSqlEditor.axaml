@@ -5,13 +5,13 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="MehSql.App.Controls.HighlightedSqlEditor">
   <Grid>
-    <!-- Bottom: Editable TextBox (invisible text, shows caret and selection) -->
+    <!-- Bottom: Editable TextBox with visible default text color -->
     <TextBox Name="Editor"
              FontFamily="Consolas, Monaco, monospace"
              FontSize="13"
              Padding="8"
              Background="Transparent"
-             Foreground="Transparent"
+             Foreground="#D4D4D4"
              CaretBrush="White"
              SelectionBrush="#3399FF"
              SelectionForegroundBrush="White"
@@ -21,7 +21,7 @@
              BorderThickness="0"
              Watermark="Enter SQL query here..." />
     
-    <!-- Top: Syntax-highlighted text (click-through, shows colors) -->
+    <!-- Top: Syntax-highlighted text overlay (replaces default gray with colors) -->
     <TextBlock Name="HighlightedText"
                FontFamily="Consolas, Monaco, monospace"
                FontSize="13"

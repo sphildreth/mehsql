@@ -29,10 +29,21 @@ public partial class HighlightedSqlEditor : UserControl
     }
 
     private bool _isUpdatingText;
+    private System.Timers.Timer? _updateTimer;
 
     public HighlightedSqlEditor()
     {
         InitializeComponent();
+        
+        _updateTimer = new System.Timers.Timer(150); // 150ms debounce
+        _updateTimer.AutoReset = false;
+        _updateTimer.Elapsed += (_, _) =>
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                UpdateHighlighting();
+            });
+        };
         
         var editor = this.FindControl<TextBox>("Editor");
 
@@ -42,9 +53,12 @@ public partial class HighlightedSqlEditor : UserControl
             {
                 if (!_isUpdatingText)
                 {
-                    Log.Debug("Editor TextChanged, updating Text property to: {Text}", (editor.Text ?? string.Empty).Substring(0, Math.Min((editor.Text ?? string.Empty).Length, 100)));
+                    Log.Debug("Editor TextChanged, scheduling update");
                     Text = editor.Text ?? string.Empty;
-                    UpdateHighlighting();
+                    
+                    // Debounce syntax highlighting updates
+                    _updateTimer?.Stop();
+                    _updateTimer?.Start();
                 }
             };
         }
@@ -62,8 +76,10 @@ public partial class HighlightedSqlEditor : UserControl
                 _isUpdatingText = true;
                 editor.Text = Text;
                 _isUpdatingText = false;
+                
+                // Update highlighting immediately when Text property changes from outside
+                UpdateHighlighting();
             }
-            UpdateHighlighting();
         }
         else if (change.Property == IsDarkThemeProperty)
         {

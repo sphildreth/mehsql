@@ -100,8 +100,16 @@ public sealed class MainWindowViewModel : ViewModelBase
     public string? CurrentDatabasePath
     {
         get => _currentDatabasePath;
-        private set => this.RaiseAndSetIfChanged(ref _currentDatabasePath, value);
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref _currentDatabasePath, value);
+            this.RaisePropertyChanged(nameof(WindowTitle));
+        }
     }
+
+    public string WindowTitle => string.IsNullOrEmpty(CurrentDatabasePath)
+        ? "MehSQL"
+        : $"MehSQL : {CurrentDatabasePath}";
 
     public ObservableCollection<string> RecentFiles { get; }
 
