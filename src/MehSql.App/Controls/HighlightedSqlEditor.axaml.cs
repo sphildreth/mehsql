@@ -100,8 +100,9 @@ public partial class HighlightedSqlEditor : UserControl
                     _updateTimer?.Stop();
                     _updateTimer?.Start();
 
-                    // Handle autocomplete
-                    _ = HandleAutocompleteAsync(editor);
+                    // Defer autocomplete to next UI tick so CaretIndex is updated
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                        _ = HandleAutocompleteAsync(editor));
                 }
             };
 
@@ -153,11 +154,15 @@ public partial class HighlightedSqlEditor : UserControl
         var text = editor.Text ?? string.Empty;
         var cursorPos = editor.CaretIndex;
 
-        Log.Debug("HandleAutocomplete: cursorPos={CursorPos}, textLen={TextLen}, trigger={IsTrigger}, visible={IsVisible}",
-            cursorPos, text.Length, IsSpecialTrigger(text, cursorPos), IsAutocompleteVisible());
+        // Clamp cursor to text bounds
+        if (cursorPos > text.Length)
+            cursorPos = text.Length;
+        if (cursorPos < 0)
+            cursorPos = 0;
 
         if (IsSpecialTrigger(text, cursorPos))
         {
+            Log.Debug("HandleAutocomplete: special trigger at pos={CursorPos}", cursorPos);
             await ShowAutocompleteAsync(text, cursorPos);
         }
         else if (IsAutocompleteVisible())
@@ -183,12 +188,14 @@ public partial class HighlightedSqlEditor : UserControl
         if (lastChar == '"' && cursorPos >= 2 && text[cursorPos - 2] == '.')
             return true;
 
-        // Trigger on space or quote after FROM/JOIN keywords to show table names
+        // Trigger after FROM/JOIN to show table names
+        // Matches: "FROM " or "FROM \"" or "JOIN " or "JOIN \""
         if (lastChar == ' ' || lastChar == '"')
         {
-            var beforeCursor = text.Substring(0, cursorPos).TrimEnd();
-            if (beforeCursor.EndsWith("FROM", StringComparison.OrdinalIgnoreCase) ||
-                beforeCursor.EndsWith("JOIN", StringComparison.OrdinalIgnoreCase))
+            var searchPos = lastChar == '"' ? cursorPos - 1 : cursorPos;
+            var beforeToken = text.Substring(0, searchPos).TrimEnd();
+            if (beforeToken.EndsWith("FROM", StringComparison.OrdinalIgnoreCase) ||
+                beforeToken.EndsWith("JOIN", StringComparison.OrdinalIgnoreCase))
                 return true;
         }
 
@@ -250,9 +257,9 @@ public partial class HighlightedSqlEditor : UserControl
             {
                 var context = _sqlParser.GetContextAtPosition(sql, cursorPos);
 
-                Log.Debug("Autocomplete context: clause={Clause}, alias={Alias}, partial={Partial}, aliasCount={AliasCount}",
+                Log.Information("Autocomplete: clause={Clause}, alias={Alias}, partial=[{Partial}], cursorPos={CursorPos}, textLen={TextLen}, sql=[{Sql}]",
                     context.CurrentClause, context.CurrentAlias ?? "(none)", context.PartialWord,
-                    context.Aliases.Count);
+                    cursorPos, sql.Length, sql);
 
                 // Fast path: filter existing if context unchanged
                 if (_lastContext?.IsMaterialChange(context) == false && _cachedCandidates is not null)
@@ -265,7 +272,9 @@ public partial class HighlightedSqlEditor : UserControl
                     sql, cursorPos, cache, ct).GetAwaiter().GetResult();
                 _lastContext = context;
 
-                Log.Debug("Autocomplete generated {Count} candidates", _cachedCandidates.Count);
+                Log.Information("Autocomplete generated {Count} candidates, types: {Types}",
+                    _cachedCandidates.Count,
+                    string.Join(",", _cachedCandidates.Select(c => c.Type).Distinct()));
                 return _cachedCandidates;
             }, ct);
 

@@ -26,6 +26,7 @@
 - 📊 **Virtualized Results** – Handles 100k+ rows without breaking a sweat
 - ⏱️ **Performance Transparency** – See exactly where time is spent (DB, fetch, UI)
 - 🎨 **Clean UI** – Light/dark themes with a no-nonsense interface
+- 💡 **SQL Autocomplete** – Context-aware suggestions for tables, columns, and keywords
 - ⌨️ **Keyboard First** – Power-user shortcuts for everything
 - 📝 **Query History** – Per-database history with quick recall
 - 📤 **Export** – Stream results to CSV or JSON

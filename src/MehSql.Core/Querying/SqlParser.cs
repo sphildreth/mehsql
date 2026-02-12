@@ -151,11 +151,13 @@ public class SqlParser : ISqlParser
     {
         var beforeCursor = sql.Substring(0, cursorPosition);
 
-        if (Regex.IsMatch(beforeCursor, @"\bWHERE\b(?!.*\b(?:ORDER|GROUP|LIMIT)\b)", RegexOptions.IgnoreCase))
+        var opts = RegexOptions.IgnoreCase | RegexOptions.Singleline;
+
+        if (Regex.IsMatch(beforeCursor, @"\bWHERE\b(?!.*\b(?:ORDER|GROUP|LIMIT)\b)", opts))
             return SqlClauseType.Where;
-        if (Regex.IsMatch(beforeCursor, @"\bSELECT\b(?!.*\bFROM\b)", RegexOptions.IgnoreCase))
+        if (Regex.IsMatch(beforeCursor, @"\bSELECT\b(?!.*\bFROM\b)", opts))
             return SqlClauseType.Select;
-        if (Regex.IsMatch(beforeCursor, @"\bFROM\b(?!.*\bWHERE\b)", RegexOptions.IgnoreCase))
+        if (Regex.IsMatch(beforeCursor, @"\bFROM\b(?!.*\bWHERE\b)", opts))
             return SqlClauseType.From;
 
         return SqlClauseType.Unknown;

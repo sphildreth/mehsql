@@ -222,6 +222,26 @@ public class AutocompleteTests
         Assert.Empty(context.Aliases);
     }
 
+    [Theory]
+    [InlineData("select * from ", SqlClauseType.From)]
+    [InlineData("select * from \"", SqlClauseType.From)]
+    [InlineData("select * from \"a", SqlClauseType.From)]
+    [InlineData("select * from \"artist\"", SqlClauseType.From)]
+    [InlineData("SELECT * FROM ", SqlClauseType.From)]
+    [InlineData("SELECT * FROM \"", SqlClauseType.From)]
+    [InlineData("SELECT * FROM \"a", SqlClauseType.From)]
+    [InlineData("select *\nfrom ", SqlClauseType.From)]
+    [InlineData("select *\nfrom \"a", SqlClauseType.From)]
+    [InlineData("select *\nfrom \"artist\" a\nwhere ", SqlClauseType.Where)]
+    public void SqlParser_DetectsFromClause_ExactUserInputs(string sql, SqlClauseType expected)
+    {
+        var parser = new SqlParser();
+
+        var context = parser.GetContextAtPosition(sql, sql.Length);
+
+        Assert.Equal(expected, context.CurrentClause);
+    }
+
     #endregion
 
     #region AutocompleteCache Tests
