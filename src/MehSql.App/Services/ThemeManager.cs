@@ -1,9 +1,10 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Markup.Xaml;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Styling;
+using System;
+using System.Collections.Generic;
 
 namespace MehSql.App.Services
 {
@@ -27,6 +28,7 @@ namespace MehSql.App.Services
         public void SetTheme(ThemeMode theme)
         {
             CurrentTheme = theme;
+            var requestedVariant = ToThemeVariant(theme);
             
             if (Application.Current?.Styles != null)
             {
@@ -65,12 +67,37 @@ namespace MehSql.App.Services
 
                 styles.Add(newStyleInclude);
             }
+
+            if (Application.Current is not null)
+            {
+                Application.Current.RequestedThemeVariant = requestedVariant;
+            }
+
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                foreach (var window in desktop.Windows)
+                {
+                    window.RequestedThemeVariant = requestedVariant;
+                }
+            }
         }
 
         public void ToggleTheme()
         {
             var newTheme = CurrentTheme == ThemeMode.Light ? ThemeMode.Dark : ThemeMode.Light;
             SetTheme(newTheme);
+        }
+
+        public static ThemeVariant ToThemeVariant(ThemeMode theme)
+        {
+            return theme == ThemeMode.Light ? ThemeVariant.Light : ThemeVariant.Dark;
+        }
+
+        public static ThemeMode ParseThemeMode(string? value)
+        {
+            return Enum.TryParse<ThemeMode>(value, ignoreCase: true, out var parsed)
+                ? parsed
+                : ThemeMode.Dark;
         }
     }
 }

@@ -11,9 +11,9 @@
              FontSize="13"
              Padding="8"
              Background="Transparent"
-             Foreground="#D4D4D4"
-             CaretBrush="White"
-             SelectionBrush="#3399FF"
+             Foreground="{DynamicResource TextBrush}"
+             CaretBrush="{DynamicResource TextBrush}"
+             SelectionBrush="{DynamicResource PrimaryBrush}"
              SelectionForegroundBrush="White"
              AcceptsReturn="True"
              AcceptsTab="True"
@@ -38,8 +38,8 @@
            IsOpen="False"
            IsLightDismissEnabled="False">
       
-      <Border Background="#2D2D30"
-              BorderBrush="#3F3F46"
+      <Border Background="{DynamicResource SurfaceBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
               BorderThickness="1"
               CornerRadius="4"
               MaxHeight="300"
@@ -62,10 +62,10 @@
               <Setter Property="Padding" Value="8,4"/>
             </Style>
             <Style Selector="ListBoxItem:pointerover">
-              <Setter Property="Background" Value="#3F3F46"/>
+              <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
             </Style>
             <Style Selector="ListBoxItem:selected">
-              <Setter Property="Background" Value="#094771"/>
+              <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
             </Style>
           </ListBox.Styles>
           
@@ -82,14 +82,14 @@
                            Text="{Binding DisplayText}"
                            FontFamily="Consolas, Monaco, monospace"
                            FontSize="13"
-                           Foreground="#D4D4D4"
+                           Foreground="{DynamicResource TextBrush}"
                            VerticalAlignment="Center" />
                 
                 <TextBlock Grid.Column="2"
                            Text="{Binding Description}"
                            FontFamily="Consolas, Monaco, monospace"
                            FontSize="11"
-                           Foreground="#808080"
+                           Foreground="{DynamicResource TextTertiaryBrush}"
                            Margin="12,0,0,0"
                            VerticalAlignment="Center"
                            IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />

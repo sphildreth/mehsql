@@ -48,6 +48,17 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal("SELECT 2;", history[1].Sql);
     }
 
+    [Fact]
+    public void Theme_PersistsAcrossSettingsReload()
+    {
+        var service = new SettingsService();
+        service.Settings.Theme = ThemeMode.Light.ToString();
+        service.Save();
+
+        var reloaded = new SettingsService();
+        Assert.Equal(ThemeMode.Light.ToString(), reloaded.Settings.Theme);
+    }
+
     public void Dispose()
     {
         Environment.SetEnvironmentVariable("XDG_CONFIG_HOME", _originalXdgConfigHome);

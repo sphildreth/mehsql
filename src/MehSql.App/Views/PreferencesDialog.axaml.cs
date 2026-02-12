@@ -40,6 +40,7 @@ public partial class PreferencesDialog : Window
 
         if (_settingsService is not null)
         {
+            _settingsService.Settings.Theme = selectedTheme.ToString();
             var tempFolder = TempFolderText.Text?.Trim();
             _settingsService.Settings.TempFolder = string.IsNullOrEmpty(tempFolder) ? null : tempFolder;
             _settingsService.Save();

@@ -23,6 +23,11 @@ public sealed class UserSettings
     public string? LastDatabasePath { get; set; }
 
     /// <summary>
+    /// Selected UI theme ("Dark" or "Light").
+    /// </summary>
+    public string Theme { get; set; } = "Dark";
+
+    /// <summary>
     /// Custom temp folder for decompression and import staging.
     /// Null or empty = use system default (Path.GetTempPath()).
     /// </summary>

@@ -28,13 +28,18 @@ namespace MehSql.App.Views;
 
 public partial class MainWindow : Window
 {
-    private readonly ThemeManager _themeManager = new ThemeManager();
+    private readonly ThemeManager _themeManager;
     private double[] _columnWidths = [];
     private IReadOnlyList<ColumnInfo> _currentColumns = [];
     private bool _scrollSyncAttached;
 
-    public MainWindow()
+    public MainWindow() : this(new ThemeManager())
     {
+    }
+
+    public MainWindow(ThemeManager themeManager)
+    {
+        _themeManager = themeManager ?? throw new ArgumentNullException(nameof(themeManager));
         Log.Logger.Information("MainWindow constructor starting");
         InitializeComponent();
         Log.Logger.Information("InitializeComponent completed");
@@ -45,6 +50,7 @@ public partial class MainWindow : Window
 
         // Set up SQL syntax highlighting
         InitializeSqlEditor();
+        ApplyCurrentTheme();
 
         // Register global keyboard shortcuts
         RegisterKeyboardShortcuts();
@@ -412,6 +418,7 @@ public partial class MainWindow : Window
     private void BuildHeader()
     {
         ResultsHeaderRow.Children.Clear();
+        var resizeGripColor = _themeManager.CurrentTheme == ThemeMode.Light ? "#C8C8C8" : "#555555";
         for (var i = 0; i < _currentColumns.Count; i++)
         {
             // Column header text
@@ -431,13 +438,14 @@ public partial class MainWindow : Window
                 Cursor = new Cursor(StandardCursorType.SizeWestEast),
                 Background = Brushes.Transparent,
                 Tag = i,
-                Child = new Border
-                {
-                    Width = 1,
-                    Background = new SolidColorBrush(Color.Parse("#555555")),
-                    HorizontalAlignment = HorizontalAlignment.Center
-                }
             };
+            var gripLine = new Border
+            {
+                Width = 1,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Background = new SolidColorBrush(Color.Parse(resizeGripColor))
+            };
+            grip.Child = gripLine;
             grip.PointerPressed += OnGripPointerPressed;
             grip.PointerMoved += OnGripPointerMoved;
             grip.PointerReleased += OnGripPointerReleased;
@@ -902,6 +910,8 @@ public partial class MainWindow : Window
     private void OnToggleThemeClick(object? sender, RoutedEventArgs e)
     {
         _themeManager.ToggleTheme();
+        ApplyThemeChanges();
+        SaveSelectedTheme();
     }
 
     private async void OnImportDatabaseClick(object? sender, RoutedEventArgs e)
@@ -1105,6 +1115,34 @@ public partial class MainWindow : Window
         var settingsService = (DataContext as MainWindowViewModel)?.SettingsService;
         var dialog = new PreferencesDialog(_themeManager, settingsService);
         await dialog.ShowDialog(this);
+        ApplyThemeChanges();
+    }
+
+    private void ApplyCurrentTheme()
+    {
+        _themeManager.SetTheme(_themeManager.CurrentTheme);
+        ApplyThemeChanges();
+    }
+
+    private void ApplyThemeChanges()
+    {
+        SqlEditor.IsDarkTheme = _themeManager.CurrentTheme == ThemeMode.Dark;
+
+        if (DataContext is MainWindowViewModel vm && vm.Results.Columns.Count > 0)
+        {
+            RebuildResultsTable(vm.Results);
+        }
+    }
+
+    private void SaveSelectedTheme()
+    {
+        if (DataContext is not MainWindowViewModel vm)
+        {
+            return;
+        }
+
+        vm.SettingsService.Settings.Theme = _themeManager.CurrentTheme.ToString();
+        vm.SettingsService.Save();
     }
 
     private async void OnAboutClick(object? sender, RoutedEventArgs e)

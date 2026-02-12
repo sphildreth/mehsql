@@ -18,8 +18,8 @@
   </Design.DataContext>
 
   <Grid RowDefinitions="Auto,*">
-    <Menu Grid.Row="0" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource TextBrush}">
-      <MenuItem Header="_File" Foreground="{StaticResource TextBrush}">
+    <Menu Grid.Row="0" Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}">
+      <MenuItem Header="_File" Foreground="{DynamicResource TextBrush}">
         <MenuItem Header="_New Database" InputGesture="Ctrl+N" Click="OnNewDatabaseClick"/>
         <MenuItem Header="_Open Database" InputGesture="Ctrl+O" Click="OnOpenDatabaseClick"/>
         <MenuItem Header="Open in _External Editor" Click="OnOpenInExternalEditorClick"/>
@@ -37,7 +37,7 @@
         <MenuItem Header="E_xit" InputGesture="Alt+F4" Click="OnExitClick"/>
       </MenuItem>
 
-      <MenuItem Header="_Edit" Foreground="{StaticResource TextBrush}">
+      <MenuItem Header="_Edit" Foreground="{DynamicResource TextBrush}">
         <MenuItem Header="_Find" InputGesture="Ctrl+F" Click="OnShowFindClick"/>
         <MenuItem Header="_Replace" InputGesture="Ctrl+H" Click="OnShowReplaceClick"/>
         <Separator/>
@@ -45,22 +45,22 @@
         <MenuItem Header="Toggle _Theme" InputGesture="Ctrl+Alt+T" Click="OnToggleThemeClick"/>
       </MenuItem>
 
-      <MenuItem Header="_Query" Foreground="{StaticResource TextBrush}">
+      <MenuItem Header="_Query" Foreground="{DynamicResource TextBrush}">
         <MenuItem Header="_Explain" InputGesture="Ctrl+E" Click="OnExplainClick"/>
         <MenuItem Header="Explain _Analyze" InputGesture="Ctrl+Shift+E" Click="OnExplainAnalyzeClick"/>
         <Separator/>
         <MenuItem Header="_Close Query Tab" InputGesture="Ctrl+W" Click="OnCloseCurrentTabClick"/>
       </MenuItem>
 
-      <MenuItem Header="_Help" Foreground="{StaticResource TextBrush}">
+      <MenuItem Header="_Help" Foreground="{DynamicResource TextBrush}">
         <MenuItem Header="_About" Click="OnAboutClick"/>
       </MenuItem>
     </Menu>
 
     <Grid Grid.Row="1" ColumnDefinitions="300,5,*">
-      <Border Grid.Column="0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0" Background="{StaticResource SurfaceBrush}">
+      <Border Grid.Column="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0" Background="{DynamicResource SurfaceBrush}">
         <Grid RowDefinitions="Auto,Auto,*">
-          <TextBlock Grid.Row="0" Text="Schema Explorer" FontWeight="Bold" Padding="8" Background="{StaticResource SurfaceLightBrush}" Foreground="{StaticResource TextBrush}"/>
+          <TextBlock Grid.Row="0" Text="Schema Explorer" FontWeight="Bold" Padding="8" Background="{DynamicResource SurfaceLightBrush}" Foreground="{DynamicResource TextBrush}"/>
           <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="4" Margin="4">
             <Button Content="Refresh" Command="{Binding SchemaExplorer.RefreshCommand}" IsEnabled="{Binding !SchemaExplorer.IsLoading}"/>
             <ProgressBar IsVisible="{Binding SchemaExplorer.IsLoading}" IsIndeterminate="True" Width="60" VerticalAlignment="Center"/>
@@ -68,7 +68,7 @@
           <TreeView Grid.Row="2" Margin="4" ItemsSource="{Binding SchemaExplorer.RootNodes}">
             <TreeView.ItemTemplate>
               <TreeDataTemplate ItemsSource="{Binding Children}">
-                <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextBrush}">
+                <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource TextBrush}">
                   <TextBlock.ContextMenu>
                     <ContextMenu>
                       <MenuItem Header="New Query Tab" Command="{Binding NewQueryTabCommand}" IsVisible="{Binding NewQueryTabCommand, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -88,12 +88,12 @@
         </Grid>
       </Border>
 
-      <GridSplitter Grid.Column="1" Background="{StaticResource BorderBrush}" Width="5" HorizontalAlignment="Stretch"/>
+      <GridSplitter Grid.Column="1" Background="{DynamicResource BorderBrush}" Width="5" HorizontalAlignment="Stretch"/>
 
       <Grid Grid.Column="2" RowDefinitions="*,5,*">
         <Grid Grid.Row="0" RowDefinitions="Auto,Auto,Auto,*">
-          <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Background="{StaticResource SurfaceLightBrush}">
-            <TextBlock Grid.Column="0" Text="SQL Editor" FontWeight="Bold" Padding="8" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}"/>
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Background="{DynamicResource SurfaceLightBrush}">
+            <TextBlock Grid.Column="0" Text="SQL Editor" FontWeight="Bold" Padding="8" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="8">
               <Button Content="New Tab" Command="{Binding NewQueryTabCommand}" Padding="8,4"/>
               <Button Content="Open SQL" Click="OnOpenSqlFileClick" Padding="8,4"/>
@@ -107,7 +107,7 @@
             </StackPanel>
           </Grid>
 
-          <Border Grid.Row="1" x:Name="FindReplacePanel" IsVisible="False" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,1" Background="{StaticResource SurfaceBrush}" Padding="8">
+          <Border Grid.Row="1" x:Name="FindReplacePanel" IsVisible="False" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,1" Background="{DynamicResource SurfaceBrush}" Padding="8">
             <WrapPanel Orientation="Horizontal" ItemHeight="28" VerticalAlignment="Center">
               <TextBlock Text="Find" VerticalAlignment="Center" Margin="0,0,6,0"/>
               <TextBox x:Name="FindTextBox" Width="220" Watermark="Find text" Margin="0,0,8,0"/>
@@ -140,20 +140,19 @@
 
           <controls:HighlightedSqlEditor x:Name="SqlEditor"
                                          Grid.Row="3"
-                                         Background="{StaticResource SurfaceBrush}"
-                                         BorderBrush="{StaticResource BorderBrush}"
+                                         Background="{DynamicResource SurfaceBrush}"
+                                         BorderBrush="{DynamicResource BorderBrush}"
                                          BorderThickness="0,1,0,0"
-                                         IsDarkTheme="True"
                                          Loaded="OnSqlEditorLoaded"
                                          Text="{Binding SqlText, Mode=TwoWay}" />
         </Grid>
 
-        <GridSplitter Grid.Row="1" Background="{StaticResource BorderBrush}" Height="5" HorizontalAlignment="Stretch"/>
+        <GridSplitter Grid.Row="1" Background="{DynamicResource BorderBrush}" Height="5" HorizontalAlignment="Stretch"/>
 
         <Grid Grid.Row="2" RowDefinitions="Auto,Auto,Auto,*,Auto">
           <Border Grid.Row="0"
-                  Background="{StaticResource WarningBrush}"
-                  BorderBrush="{StaticResource WarningBrush}"
+                  Background="{DynamicResource WarningBrush}"
+                  BorderBrush="{DynamicResource WarningBrush}"
                   BorderThickness="0,0,0,1"
                   Padding="8"
                   IsVisible="{Binding Results.HasOrderingWarning}">
@@ -164,8 +163,8 @@
           </Border>
 
           <Border Grid.Row="1"
-                  Background="{StaticResource PrimaryBrush}"
-                  BorderBrush="{StaticResource PrimaryBrush}"
+                  Background="{DynamicResource PrimaryBrush}"
+                  BorderBrush="{DynamicResource PrimaryBrush}"
                   BorderThickness="0,0,0,1"
                   Padding="8"
                   IsVisible="{Binding Results.DefaultLimitApplied}">
@@ -173,8 +172,8 @@
           </Border>
 
           <Border Grid.Row="2"
-                  Background="{StaticResource ErrorBrush}"
-                  BorderBrush="{StaticResource ErrorBrush}"
+                  Background="{DynamicResource ErrorBrush}"
+                  BorderBrush="{DynamicResource ErrorBrush}"
                   BorderThickness="0,0,0,1"
                   Padding="8"
                   IsVisible="{Binding HasError}">
@@ -187,27 +186,27 @@
           <TabControl Grid.Row="3">
             <TabItem Header="Results">
               <Grid RowDefinitions="Auto,*">
-                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Background="{StaticResource SurfaceLightBrush}">
-                  <TextBlock Grid.Column="0" Text="Query Results" FontWeight="Bold" Padding="8" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}"/>
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Background="{DynamicResource SurfaceLightBrush}">
+                  <TextBlock Grid.Column="0" Text="Query Results" FontWeight="Bold" Padding="8" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}"/>
                   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="4">
                     <Button Content="Copy TSV" Click="OnCopyRowsAsTsvClick" Padding="8,2" FontSize="11"/>
                     <Button Content="Copy CSV" Click="OnCopyRowsAsCsvClick" Padding="8,2" FontSize="11"/>
                     <Button Content="Export CSV" Click="OnExportCsvClick" Padding="8,2" FontSize="11" IsEnabled="{Binding !Results.IsExporting}"/>
                     <Button Content="Export JSON" Click="OnExportJsonClick" Padding="8,2" FontSize="11" IsEnabled="{Binding !Results.IsExporting}"/>
-                    <TextBlock Text="{Binding Results.ExportStatus}" VerticalAlignment="Center" Margin="8,0" FontSize="11" Foreground="{StaticResource TextTertiaryBrush}"/>
+                    <TextBlock Text="{Binding Results.ExportStatus}" VerticalAlignment="Center" Margin="8,0" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
                   </StackPanel>
                 </Grid>
 
                 <Grid Grid.Row="1" RowDefinitions="Auto,*">
-                  <Border Grid.Row="0" Background="{StaticResource SurfaceLightBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                  <Border Grid.Row="0" Background="{DynamicResource SurfaceLightBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
                     <ScrollViewer x:Name="HeaderScrollViewer" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
                       <StackPanel x:Name="ResultsHeaderRow" Orientation="Horizontal"/>
                     </ScrollViewer>
                   </Border>
                   <ListBox Grid.Row="1"
                            x:Name="ResultsItemsControl"
-                           Background="{StaticResource SurfaceBrush}"
-                           Foreground="{StaticResource TextBrush}"
+                           Background="{DynamicResource SurfaceBrush}"
+                           Foreground="{DynamicResource TextBrush}"
                            BorderThickness="0"
                            ScrollViewer.HorizontalScrollBarVisibility="Auto"
                            ScrollViewer.VerticalScrollBarVisibility="Auto">
@@ -225,23 +224,23 @@
 
             <TabItem Header="Explain / Analyze">
               <Grid RowDefinitions="Auto,*">
-                <Grid Grid.Row="0" Background="{StaticResource SurfaceLightBrush}" ColumnDefinitions="Auto,Auto,*">
+                <Grid Grid.Row="0" Background="{DynamicResource SurfaceLightBrush}" ColumnDefinitions="Auto,Auto,*">
                   <Button Grid.Column="0" Content="Explain" Command="{Binding Results.ExplainQueryCommand}" IsEnabled="{Binding !Results.IsBusy}" Margin="4" Padding="12,4"/>
                   <Button Grid.Column="1" Classes="primary" Content="Explain Analyze" Command="{Binding Results.ExplainAnalyzeCommand}" IsEnabled="{Binding !Results.IsBusy}" Margin="4" Padding="12,4"/>
-                  <TextBlock Grid.Column="2" Text="Shows query execution plan" VerticalAlignment="Center" Margin="8,0" Foreground="{StaticResource TextTertiaryBrush}" FontSize="11"/>
+                  <TextBlock Grid.Column="2" Text="Shows query execution plan" VerticalAlignment="Center" Margin="8,0" Foreground="{DynamicResource TextTertiaryBrush}" FontSize="11"/>
                 </Grid>
 
-                <Border Grid.Row="1" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                <Border Grid.Row="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
                   <Grid RowDefinitions="Auto,*">
-                    <Border Grid.Row="0" Background="{StaticResource ErrorBrush}" BorderBrush="{StaticResource ErrorBrush}" BorderThickness="0,0,0,1" Padding="8" IsVisible="{Binding Results.ExecutionPlanError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <Border Grid.Row="0" Background="{DynamicResource ErrorBrush}" BorderBrush="{DynamicResource ErrorBrush}" BorderThickness="0,0,0,1" Padding="8" IsVisible="{Binding Results.ExecutionPlanError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                       <TextBlock Text="{Binding Results.ExecutionPlanError}" TextWrapping="Wrap" Foreground="White"/>
                     </Border>
 
                     <ScrollViewer Grid.Row="1" IsVisible="{Binding Results.ShowExecutionPlan}">
-                      <TextBlock Text="{Binding Results.ExecutionPlanRawOutput}" FontFamily="Consolas, monospace" FontSize="11" Padding="8" TextWrapping="Wrap" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource TextBrush}"/>
+                      <TextBlock Text="{Binding Results.ExecutionPlanRawOutput}" FontFamily="Consolas, monospace" FontSize="11" Padding="8" TextWrapping="Wrap" Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"/>
                     </ScrollViewer>
 
-                    <TextBlock Grid.Row="1" Text="Click 'Explain' or 'Explain Analyze' to see the query execution plan" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{StaticResource TextTertiaryBrush}" IsVisible="{Binding !Results.ShowExecutionPlan}"/>
+                    <TextBlock Grid.Row="1" Text="Click 'Explain' or 'Explain Analyze' to see the query execution plan" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding !Results.ShowExecutionPlan}"/>
                   </Grid>
                 </Border>
               </Grid>
@@ -258,7 +257,7 @@
                   <ListBox.ItemTemplate>
                     <DataTemplate>
                       <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,2">
-                        <TextBlock Grid.Column="0" Text="{Binding DisplayTime}" Foreground="{StaticResource TextTertiaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{Binding DisplayTime}" Foreground="{DynamicResource TextTertiaryBrush}" FontSize="11" VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="1" Text="{Binding Preview}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                         <Button Grid.Column="2" Content="Re-run"
                                 Command="{Binding DataContext.ReRunHistoryQueryCommand, ElementName=RootWindow}"
@@ -274,33 +273,33 @@
             </TabItem>
           </TabControl>
 
-          <Border Grid.Row="4" Background="{StaticResource SurfaceLightBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="8">
+          <Border Grid.Row="4" Background="{DynamicResource SurfaceLightBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="8">
             <Grid ColumnDefinitions="*,Auto">
               <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="24">
                 <StackPanel>
-                  <TextBlock Text="DB Execution" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock Text="{Binding Results.DbExecutionDisplay}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
+                  <TextBlock Text="DB Execution" Foreground="{DynamicResource TextTertiaryBrush}" FontSize="10"/>
+                  <TextBlock Text="{Binding Results.DbExecutionDisplay}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}"/>
                 </StackPanel>
                 <StackPanel>
-                  <TextBlock Text="Fetch Time" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock Text="{Binding Results.FetchTimeDisplay}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
+                  <TextBlock Text="Fetch Time" Foreground="{DynamicResource TextTertiaryBrush}" FontSize="10"/>
+                  <TextBlock Text="{Binding Results.FetchTimeDisplay}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}"/>
                 </StackPanel>
                 <StackPanel>
-                  <TextBlock Text="UI Bind" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock Text="{Binding Results.UiBindDisplay}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
+                  <TextBlock Text="UI Bind" Foreground="{DynamicResource TextTertiaryBrush}" FontSize="10"/>
+                  <TextBlock Text="{Binding Results.UiBindDisplay}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}"/>
                 </StackPanel>
                 <StackPanel>
-                  <TextBlock Text="Total" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock Text="{Binding Results.TotalTimeDisplay}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
+                  <TextBlock Text="Total" Foreground="{DynamicResource TextTertiaryBrush}" FontSize="10"/>
+                  <TextBlock Text="{Binding Results.TotalTimeDisplay}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}"/>
                 </StackPanel>
                 <StackPanel>
-                  <TextBlock Text="Rows" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock Text="{Binding Results.RowCount}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
+                  <TextBlock Text="Rows" Foreground="{DynamicResource TextTertiaryBrush}" FontSize="10"/>
+                  <TextBlock Text="{Binding Results.RowCount}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}"/>
                 </StackPanel>
               </StackPanel>
 
               <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Right" Spacing="2">
-                <TextBlock Text="{Binding SchemaActionStatus}" Foreground="{StaticResource TextTertiaryBrush}" FontSize="11"/>
+                <TextBlock Text="{Binding SchemaActionStatus}" Foreground="{DynamicResource TextTertiaryBrush}" FontSize="11"/>
               </StackPanel>
             </Grid>
           </Border>

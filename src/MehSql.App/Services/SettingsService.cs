@@ -160,6 +160,11 @@ public sealed class SettingsService
             {
                 Settings.QueryHistoryLimit = DefaultQueryHistoryLimit;
             }
+
+            if (string.IsNullOrWhiteSpace(Settings.Theme))
+            {
+                Settings.Theme = ThemeMode.Dark.ToString();
+            }
         }
         catch (Exception ex)
         {

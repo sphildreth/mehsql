@@ -5,14 +5,14 @@
         Width="400" Height="310"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
-        Background="#1E1E2E">
+        Background="{DynamicResource BackgroundBrush}">
   <StackPanel Margin="24" Spacing="16">
-    <TextBlock Text="Preferences" FontSize="20" FontWeight="Bold" Foreground="#CDD6F4"/>
-    <Separator Background="#45475A"/>
+    <TextBlock Text="Preferences" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+    <Separator Background="{DynamicResource BorderBrush}"/>
 
     <!-- Theme -->
     <StackPanel Orientation="Horizontal" Spacing="12">
-      <TextBlock Text="Theme:" Foreground="#CDD6F4" VerticalAlignment="Center" Width="80"/>
+      <TextBlock Text="Theme:" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Width="80"/>
       <ComboBox x:Name="ThemeCombo" Width="180" SelectedIndex="0">
         <ComboBoxItem Content="Dark"/>
         <ComboBoxItem Content="Light"/>
@@ -22,11 +22,11 @@
     <!-- Temp Folder -->
     <StackPanel Spacing="4">
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <TextBlock Text="Temp Folder:" Foreground="#CDD6F4" VerticalAlignment="Center" Width="80"/>
-        <TextBox x:Name="TempFolderText" Width="200" Foreground="#CDD6F4" Background="#313244" Watermark="(system default)"/>
+        <TextBlock Text="Temp Folder:" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Width="80"/>
+        <TextBox x:Name="TempFolderText" Width="200" Foreground="{DynamicResource TextBrush}" Background="{DynamicResource SurfaceBrush}" Watermark="(system default)"/>
         <Button x:Name="TempBrowseButton" Content="..." Padding="8,4" Click="OnTempBrowseClick"/>
       </StackPanel>
-      <TextBlock Text="Used for extracting compressed imports. Leave blank for system default." Foreground="#6C7086" FontSize="10" Margin="80,0,0,0"/>
+      <TextBlock Text="Used for extracting compressed imports. Leave blank for system default." Foreground="{DynamicResource TextTertiaryBrush}" FontSize="10" Margin="80,0,0,0"/>
     </StackPanel>
 
     <!-- Buttons -->

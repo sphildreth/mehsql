@@ -23,9 +23,15 @@ public sealed class App : Application
             // Create a default database path in temp folder
             var dbPath = Path.Combine(Path.GetTempPath(), $"mehsql_{Guid.NewGuid()}.db");
             var connectionFactory = new ConnectionFactory(dbPath);
+            var settingsService = new SettingsService();
+            var themeManager = new ThemeManager();
 
-            var vm = new MainWindowViewModel(connectionFactory);
-            desktop.MainWindow = new MainWindow
+            // Apply persisted theme before creating and showing the main window.
+            var startupTheme = ThemeManager.ParseThemeMode(settingsService.Settings.Theme);
+            themeManager.SetTheme(startupTheme);
+
+            var vm = new MainWindowViewModel(connectionFactory, settingsService);
+            desktop.MainWindow = new MainWindow(themeManager)
             {
                 DataContext = vm
             };
