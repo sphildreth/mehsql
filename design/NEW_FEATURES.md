@@ -20,7 +20,7 @@ Constraints / scope:
 
 
 ### Execute + Results
-- Run selection vs run whole editor.
+- Run selection vs run whole editor (selection = highlighted text; fallback = current statement or whole editor).
 - Clear "DB execution time" vs "fetch/materialize time" vs "UI bind/render time" in the performance panel.
 - Cancel running query (already a must-have; ensure it behaves well even if cancellation is best-effort).
 - Results:
@@ -39,9 +39,10 @@ Constraints / scope:
   - Refresh schema.
 - Tables as expandable nodes with children:
   - Columns
+  - Foreign Keys
   - Indexes
-  - Views
   - Triggers
+  - Views (expandable to show triggers if defined)
 - Right-click actions on a table:
   - New query: `SELECT * FROM <table> LIMIT 100;`
   - Generate CRUD snippets (INSERT/UPDATE/DELETE templates).
@@ -71,9 +72,9 @@ This means the "New Trigger" UX should generate and validate only the supported 
 ### Autocomplete (Pragmatic)
 - Table/column name completion (from schema browser).
 - Keyword completion.
-- Simple completion triggers: dot (`alias.`), after `FROM`/`JOIN`.
+- Simple completion triggers: dot (`alias.`), after `FROM`/`JOIN`/`WHERE`/`ORDER BY`.
 
-### Object DDL ("DMO" equivalent)
+### Object DDL
 - This is a must-have feature (DBeaver-style "DDL" tab): show the full SQL script to rebuild the object.
 - Output should be a single script users can copy/paste:
   - Optional header comments (generated timestamp, "synthesized" warning).
@@ -81,7 +82,7 @@ This means the "New Trigger" UX should generate and validate only the supported 
   - For tables: include related indexes as additional `CREATE INDEX` statements.
 - Show best-effort DDL for:
   - tables (columns + constraints)
-  - indexes
+  - indexes (for selected table; or all indexes if viewing database-level DDL)
   - views
   - triggers (supported subset)
 - Where DecentDB cannot provide the original source SQL, synthesize DDL from introspection and label it as synthesized.
