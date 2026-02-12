@@ -30,5 +30,74 @@
                TextWrapping="NoWrap"
                Background="Transparent"
                IsHitTestVisible="False" />
+    
+    <!-- Layer 3: Autocomplete popup -->
+    <Popup Name="AutocompletePopup"
+           Placement="Bottom"
+           PlacementTarget="{Binding #Editor}"
+           IsOpen="False"
+           IsLightDismissEnabled="False">
+      
+      <Border Background="#2D2D30"
+              BorderBrush="#3F3F46"
+              BorderThickness="1"
+              CornerRadius="4"
+              MaxHeight="300"
+              MinWidth="250"
+              BoxShadow="0 4 8 0 #40000000">
+        
+        <ListBox Name="SuggestionsList"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 SelectionMode="Single">
+          
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <VirtualizingStackPanel />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          
+          <ListBox.Styles>
+            <Style Selector="ListBoxItem">
+              <Setter Property="Padding" Value="8,4"/>
+            </Style>
+            <Style Selector="ListBoxItem:pointerover">
+              <Setter Property="Background" Value="#3F3F46"/>
+            </Style>
+            <Style Selector="ListBoxItem:selected">
+              <Setter Property="Background" Value="#094771"/>
+            </Style>
+          </ListBox.Styles>
+          
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0" 
+                           Text="{Binding Icon}"
+                           FontSize="14"
+                           Margin="0,0,8,0"
+                           VerticalAlignment="Center" />
+                
+                <TextBlock Grid.Column="1"
+                           Text="{Binding DisplayText}"
+                           FontFamily="Consolas, Monaco, monospace"
+                           FontSize="13"
+                           Foreground="#D4D4D4"
+                           VerticalAlignment="Center" />
+                
+                <TextBlock Grid.Column="2"
+                           Text="{Binding Description}"
+                           FontFamily="Consolas, Monaco, monospace"
+                           FontSize="11"
+                           Foreground="#808080"
+                           Margin="12,0,0,0"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Border>
+    </Popup>
   </Grid>
 </UserControl>

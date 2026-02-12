@@ -78,6 +78,12 @@ public sealed class App : Application
                         Log.Information("Opening database from command-line: {Path}", databaseFileToOpen);
                         await vm.OpenDatabaseAsync(databaseFileToOpen);
                     }
+                    else if (!string.IsNullOrEmpty(vm.SettingsService.Settings.LastDatabasePath) &&
+                             File.Exists(vm.SettingsService.Settings.LastDatabasePath))
+                    {
+                        Log.Information("Reopening last database: {Path}", vm.SettingsService.Settings.LastDatabasePath);
+                        await vm.OpenDatabaseAsync(vm.SettingsService.Settings.LastDatabasePath);
+                    }
                     else
                     {
                         // Load initial schema for default temp database

@@ -113,6 +113,16 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     public ObservableCollection<string> RecentFiles { get; }
 
+    private AutocompleteCache? _autocompleteCache;
+    /// <summary>
+    /// Cached schema metadata for SQL autocomplete. Built when a database is opened.
+    /// </summary>
+    public AutocompleteCache? AutocompleteCache
+    {
+        get => _autocompleteCache;
+        private set => this.RaiseAndSetIfChanged(ref _autocompleteCache, value);
+    }
+
     #endregion
 
     #region Commands
@@ -217,6 +227,18 @@ public sealed class MainWindowViewModel : ViewModelBase
             await SchemaExplorer.LoadAsync();
             Log.Logger.Information("Schema explorer loaded successfully for database: {FilePath}", filePath);
 
+            // Build autocomplete cache from loaded schema
+            try
+            {
+                var schema = await schemaService.GetSchemaAsync();
+                AutocompleteCache = new AutocompleteCache(schema);
+                Log.Logger.Information("Autocomplete cache built with {TableCount} tables", AutocompleteCache.GetAllTables().Count);
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Warning(ex, "Failed to build autocomplete cache");
+            }
+
             ErrorMessage = null;
             HasError = false;
             TrackRecentFile(filePath);
@@ -270,6 +292,18 @@ public sealed class MainWindowViewModel : ViewModelBase
             
             await SchemaExplorer.LoadAsync();
             Log.Logger.Information("Schema explorer loaded successfully for new database: {FilePath}", filePath);
+
+            // Build autocomplete cache from loaded schema
+            try
+            {
+                var schema = await schemaService.GetSchemaAsync();
+                AutocompleteCache = new AutocompleteCache(schema);
+                Log.Logger.Information("Autocomplete cache built with {TableCount} tables", AutocompleteCache.GetAllTables().Count);
+            }
+            catch (Exception ex)
+            {
+                Log.Logger.Warning(ex, "Failed to build autocomplete cache");
+            }
 
             ErrorMessage = null;
             HasError = false;

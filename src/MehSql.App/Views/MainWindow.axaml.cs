@@ -68,8 +68,9 @@ public partial class MainWindow : Window
                     }
                 };
 
-                // Sync initial text from ViewModel to editor
+                // Sync initial values from ViewModel to editor
                 SqlEditor.Text = vm.SqlText ?? "";
+                SqlEditor.AutocompleteCache = vm.AutocompleteCache;
 
                 // ViewModel → Editor sync
                 vm.PropertyChanged += (_, args) =>
@@ -82,6 +83,10 @@ public partial class MainWindow : Window
                             Log.Logger.Debug("Updating SqlEditor.Text from ViewModel");
                             SqlEditor.Text = vm.SqlText ?? "";
                         }
+                    }
+                    else if (args.PropertyName == nameof(vm.AutocompleteCache))
+                    {
+                        SqlEditor.AutocompleteCache = vm.AutocompleteCache;
                     }
                 };
 
