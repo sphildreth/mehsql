@@ -122,6 +122,27 @@ public sealed class ResultsViewModel : ViewModelBase
     public ICommand ExportToCsvCommand { get; }
     public ICommand ExportToJsonCommand { get; }
 
+    private bool _applyDefaultLimit = true;
+    public bool ApplyDefaultLimit
+    {
+        get => _applyDefaultLimit;
+        set => this.RaiseAndSetIfChanged(ref _applyDefaultLimit, value);
+    }
+
+    private bool _defaultLimitApplied;
+    public bool DefaultLimitApplied
+    {
+        get => _defaultLimitApplied;
+        private set => this.RaiseAndSetIfChanged(ref _defaultLimitApplied, value);
+    }
+
+    private int? _appliedDefaultLimit;
+    public int? AppliedDefaultLimit
+    {
+        get => _appliedDefaultLimit;
+        private set => this.RaiseAndSetIfChanged(ref _appliedDefaultLimit, value);
+    }
+
     private static bool DetectOrdering(string sql)
     {
         if (string.IsNullOrWhiteSpace(sql)) return false;
@@ -137,7 +158,7 @@ public sealed class ResultsViewModel : ViewModelBase
         {
             Rows.Clear();
             Log.Logger.Debug("Cleared existing rows");
-            var page = await _pager.ExecuteFirstPageAsync(Sql ?? "", new QueryOptions(), ct);
+            var page = await _pager.ExecuteFirstPageAsync(Sql ?? "", CreateQueryOptions(), ct);
             Log.Logger.Debug("Received page with {RowCount} rows and {ColumnCount} columns", page.Rows.Count, page.Columns.Count);
             
             Apply(page, isFirstPage: true);
@@ -157,7 +178,7 @@ public sealed class ResultsViewModel : ViewModelBase
         IsBusy = true;
         try
         {
-            var page = await _pager.ExecuteNextPageAsync(Sql, new QueryOptions(), _nextToken, ct);
+            var page = await _pager.ExecuteNextPageAsync(Sql, CreateQueryOptions(), _nextToken, ct);
             Apply(page, isFirstPage: false);
         }
         finally { IsBusy = false; }
@@ -290,7 +311,7 @@ public sealed class ResultsViewModel : ViewModelBase
             var currentToken = _nextToken;
             while (currentToken != null && !ct.IsCancellationRequested)
             {
-                var page = await _pager.ExecuteNextPageAsync(Sql, new QueryOptions(), currentToken, ct);
+                var page = await _pager.ExecuteNextPageAsync(Sql, CreateQueryOptions(), currentToken, ct);
                 if (page.Rows.Count == 0)
                 {
                     break;
@@ -324,6 +345,10 @@ public sealed class ResultsViewModel : ViewModelBase
         if (isFirstPage)
         {
             HasOrderingWarning = !DetectOrdering(Sql);
+            DefaultLimitApplied = page.DefaultLimitApplied;
+            AppliedDefaultLimit = page.AppliedDefaultLimit;
         }
     }
+
+    private QueryOptions CreateQueryOptions() => new(ApplyDefaultLimit: ApplyDefaultLimit);
 }

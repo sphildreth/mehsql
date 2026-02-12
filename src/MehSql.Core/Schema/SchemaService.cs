@@ -39,6 +39,21 @@ public interface ISchemaService
     /// Gets indexes for a specific table.
     /// </summary>
     Task<IReadOnlyList<IndexNode>> GetTableIndexesAsync(string schema, string tableName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets foreign keys for a specific table.
+    /// </summary>
+    Task<IReadOnlyList<ForeignKeyNode>> GetTableForeignKeysAsync(string schema, string tableName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets triggers attached to a specific table.
+    /// </summary>
+    Task<IReadOnlyList<TriggerNode>> GetTableTriggersAsync(string schema, string tableName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets triggers attached to a specific view.
+    /// </summary>
+    Task<IReadOnlyList<TriggerNode>> GetViewTriggersAsync(string schema, string viewName, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -113,6 +128,12 @@ public sealed class SchemaService : ISchemaService
             var indexes = await GetTableIndexesAsync("main", tableName, ct);
             Log.Logger.Debug("Retrieved {IndexCount} indexes for table {TableName}", indexes.Count, tableName);
             table.Indexes.AddRange(indexes);
+
+            var foreignKeys = await GetTableForeignKeysAsync("main", tableName, ct);
+            table.ForeignKeys.AddRange(foreignKeys);
+
+            var triggers = await GetTableTriggersAsync("main", tableName, ct);
+            table.Triggers.AddRange(triggers);
             
             tables.Add(table);
         }
@@ -140,7 +161,20 @@ public sealed class SchemaService : ISchemaService
             {
                 var viewName = reader.GetString(0);
                 Log.Logger.Debug("Found view: {ViewName}", viewName);
-                views.Add(new ViewNode("main", viewName));
+                var view = new ViewNode("main", viewName);
+                try
+                {
+                    var viewColumns = await GetTableColumnsAsync("main", viewName, ct);
+                    view.Columns.AddRange(viewColumns);
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Debug(ex, "Could not load columns for view {ViewName}", viewName);
+                }
+
+                var viewTriggers = await GetViewTriggersAsync("main", viewName, ct);
+                view.Triggers.AddRange(viewTriggers);
+                views.Add(view);
             }
         }
         catch (Exception ex)
@@ -235,4 +269,140 @@ public sealed class SchemaService : ISchemaService
 
         return indexes;
     }
+
+    public async Task<IReadOnlyList<ForeignKeyNode>> GetTableForeignKeysAsync(string schema, string tableName, CancellationToken ct = default)
+    {
+        var foreignKeys = new List<ForeignKeyNode>();
+
+        var escapedTable = EscapeSqlLiteral(tableName);
+        var sql = $@"
+SELECT
+    constraint_name,
+    column_name,
+    foreign_table_name,
+    foreign_column_name
+FROM foreign_keys
+WHERE table_name = '{escapedTable}'
+ORDER BY constraint_name, column_name";
+
+        await TryReadNodesAsync(
+            sql,
+            reader =>
+            {
+                var name = ReadString(reader, 0, fallback: $"fk_{tableName}");
+                var column = ReadString(reader, 1, fallback: "unknown_column");
+                var refTable = ReadString(reader, 2, fallback: "unknown_table");
+                var refColumn = ReadString(reader, 3, fallback: "unknown_column");
+                foreignKeys.Add(new ForeignKeyNode(name, column, refTable, refColumn));
+            },
+            ct);
+
+        return foreignKeys;
+    }
+
+    public async Task<IReadOnlyList<TriggerNode>> GetTableTriggersAsync(string schema, string tableName, CancellationToken ct = default)
+    {
+        return await GetTriggersByParentAsync(tableName, ct);
+    }
+
+    public async Task<IReadOnlyList<TriggerNode>> GetViewTriggersAsync(string schema, string viewName, CancellationToken ct = default)
+    {
+        return await GetTriggersByParentAsync(viewName, ct);
+    }
+
+    private async Task<IReadOnlyList<TriggerNode>> GetTriggersByParentAsync(string parentName, CancellationToken ct)
+    {
+        var triggers = new List<TriggerNode>();
+        var escapedName = EscapeSqlLiteral(parentName);
+
+        var possibleQueries = new[]
+        {
+            $@"
+SELECT
+    name,
+    timing,
+    event,
+    table_name,
+    sql
+FROM triggers
+WHERE table_name = '{escapedName}'
+ORDER BY name",
+            $@"
+SELECT
+    name,
+    timing,
+    event,
+    view_name,
+    sql
+FROM triggers
+WHERE view_name = '{escapedName}'
+ORDER BY name"
+        };
+
+        foreach (var sql in possibleQueries)
+        {
+            var readAny = await TryReadNodesAsync(
+                sql,
+                reader =>
+                {
+                    var name = ReadString(reader, 0, fallback: "trigger");
+                    var timing = ReadString(reader, 1, fallback: "AFTER");
+                    var triggerEvent = ReadString(reader, 2, fallback: "UNKNOWN");
+                    var parent = ReadString(reader, 3, fallback: parentName);
+                    var sourceSql = reader.FieldCount > 4 && !reader.IsDBNull(4) ? reader.GetValue(4)?.ToString() : null;
+
+                    triggers.Add(new TriggerNode(name, timing, triggerEvent, parent, sourceSql));
+                },
+                ct);
+
+            if (readAny)
+            {
+                break;
+            }
+        }
+
+        return triggers;
+    }
+
+    private async Task<bool> TryReadNodesAsync(
+        string sql,
+        Action<IDataRecord> onRow,
+        CancellationToken ct)
+    {
+        try
+        {
+            using var connection = _connectionFactory.CreateConnection();
+            await connection.OpenAsync(ct);
+
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = sql;
+            using var reader = await cmd.ExecuteReaderAsync(ct);
+
+            var readAny = false;
+            while (await reader.ReadAsync(ct))
+            {
+                readAny = true;
+                onRow(reader);
+            }
+
+            return readAny;
+        }
+        catch (Exception ex)
+        {
+            Log.Logger.Debug(ex, "Catalog query failed: {Sql}", sql);
+            return false;
+        }
+    }
+
+    private static string ReadString(IDataRecord reader, int ordinal, string fallback)
+    {
+        if (ordinal >= reader.FieldCount || reader.IsDBNull(ordinal))
+        {
+            return fallback;
+        }
+
+        return reader.GetValue(ordinal)?.ToString() ?? fallback;
+    }
+
+    private static string EscapeSqlLiteral(string value) => value.Replace("'", "''", StringComparison.Ordinal);
 }

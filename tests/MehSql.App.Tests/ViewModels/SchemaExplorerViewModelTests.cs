@@ -61,7 +61,8 @@ namespace MehSql.App.Tests.ViewModels
 
             // Assert
             Assert.False(viewModel.IsLoading);
-            Assert.Empty(viewModel.RootNodes);
+            Assert.Single(viewModel.RootNodes);
+            Assert.Equal("Database", viewModel.RootNodes[0].DisplayName);
         }
 
         [Fact]

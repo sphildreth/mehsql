@@ -470,6 +470,151 @@ public partial class HighlightedSqlEditor : UserControl
         var editor = this.FindControl<TextBox>("Editor");
         editor?.KeyBindings.Add(binding);
     }
+
+    public int CaretIndex => this.FindControl<TextBox>("Editor")?.CaretIndex ?? 0;
+
+    public string SelectedText => this.FindControl<TextBox>("Editor")?.SelectedText ?? string.Empty;
+
+    public bool HasSelection
+    {
+        get
+        {
+            var editor = this.FindControl<TextBox>("Editor");
+            return editor is not null && editor.SelectionStart != editor.SelectionEnd;
+        }
+    }
+
+    public void ReplaceSelection(string replacement)
+    {
+        var editor = this.FindControl<TextBox>("Editor");
+        if (editor is null)
+        {
+            return;
+        }
+
+        var text = editor.Text ?? string.Empty;
+        var start = Math.Min(editor.SelectionStart, editor.SelectionEnd);
+        var end = Math.Max(editor.SelectionStart, editor.SelectionEnd);
+        var length = Math.Max(0, end - start);
+        if (start > text.Length)
+        {
+            start = text.Length;
+            length = 0;
+        }
+
+        var updated = text.Remove(start, Math.Min(length, text.Length - start)).Insert(start, replacement);
+        _isUpdatingText = true;
+        editor.Text = updated;
+        editor.CaretIndex = start + replacement.Length;
+        editor.SelectionStart = editor.CaretIndex;
+        editor.SelectionEnd = editor.CaretIndex;
+        _isUpdatingText = false;
+
+        Text = updated;
+        _updateTimer?.Stop();
+        _updateTimer?.Start();
+    }
+
+    public bool FindNext(string searchText, bool matchCase = false)
+    {
+        if (string.IsNullOrEmpty(searchText))
+        {
+            return false;
+        }
+
+        var editor = this.FindControl<TextBox>("Editor");
+        if (editor is null)
+        {
+            return false;
+        }
+
+        var text = editor.Text ?? string.Empty;
+        if (text.Length == 0)
+        {
+            return false;
+        }
+
+        var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        var startIndex = Math.Max(editor.SelectionEnd, 0);
+        var found = text.IndexOf(searchText, startIndex, comparison);
+        if (found < 0 && startIndex > 0)
+        {
+            found = text.IndexOf(searchText, 0, comparison);
+        }
+
+        if (found < 0)
+        {
+            return false;
+        }
+
+        editor.Focus();
+        editor.SelectionStart = found;
+        editor.SelectionEnd = found + searchText.Length;
+        editor.CaretIndex = editor.SelectionEnd;
+        return true;
+    }
+
+    public bool ReplaceNext(string searchText, string replacementText, bool matchCase = false)
+    {
+        var editor = this.FindControl<TextBox>("Editor");
+        if (editor is null || string.IsNullOrEmpty(searchText))
+        {
+            return false;
+        }
+
+        var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        if (!string.IsNullOrEmpty(editor.SelectedText) &&
+            string.Equals(editor.SelectedText, searchText, comparison))
+        {
+            ReplaceSelection(replacementText);
+        }
+
+        return FindNext(searchText, matchCase);
+    }
+
+    public int ReplaceAll(string searchText, string replacementText, bool matchCase = false)
+    {
+        var editor = this.FindControl<TextBox>("Editor");
+        if (editor is null || string.IsNullOrEmpty(searchText))
+        {
+            return 0;
+        }
+
+        var source = editor.Text ?? string.Empty;
+        var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        var count = 0;
+        var startIndex = 0;
+
+        while (startIndex <= source.Length)
+        {
+            var found = source.IndexOf(searchText, startIndex, comparison);
+            if (found < 0)
+            {
+                break;
+            }
+
+            source = source.Remove(found, searchText.Length).Insert(found, replacementText);
+            startIndex = found + replacementText.Length;
+            count++;
+        }
+
+        if (count == 0)
+        {
+            return 0;
+        }
+
+        _isUpdatingText = true;
+        editor.Text = source;
+        editor.CaretIndex = Math.Min(startIndex, source.Length);
+        editor.SelectionStart = editor.CaretIndex;
+        editor.SelectionEnd = editor.CaretIndex;
+        _isUpdatingText = false;
+
+        Text = source;
+        _updateTimer?.Stop();
+        _updateTimer?.Start();
+        return count;
+    }
 }
 
 /// <summary>

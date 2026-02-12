@@ -115,6 +115,30 @@ public class QueryExecutorTests : IDisposable
     }
 
     [Fact]
+    public async Task ExecutePageAsync_AppliesDefaultLimit_WhenEnabled()
+    {
+        var executor = new QueryExecutor(_connectionFactory);
+        var options = new QueryOptions(PageSize: 2, ApplyDefaultLimit: true);
+
+        var firstPage = await executor.ExecutePageAsync("SELECT * FROM test_items ORDER BY id", options);
+
+        Assert.Equal(2, firstPage.Rows.Count);
+        Assert.True(firstPage.DefaultLimitApplied);
+    }
+
+    [Fact]
+    public async Task ExecutePageAsync_DoesNotApplyDefaultLimit_WhenDisabled()
+    {
+        var executor = new QueryExecutor(_connectionFactory);
+        var options = new QueryOptions(PageSize: 2, ApplyDefaultLimit: false);
+
+        var firstPage = await executor.ExecutePageAsync("SELECT * FROM test_items ORDER BY id", options);
+
+        Assert.Equal(5, firstPage.Rows.Count);
+        Assert.False(firstPage.DefaultLimitApplied);
+    }
+
+    [Fact]
     public async Task ExecutePageAsync_WithSemicolonTerminatedSql_AppliesFirstPageLimit()
     {
         var executor = new QueryExecutor(_connectionFactory);

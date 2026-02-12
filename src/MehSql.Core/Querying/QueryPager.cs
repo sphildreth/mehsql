@@ -25,7 +25,7 @@ public sealed class QueryPager : IQueryPager
         var result = await _executor.ExecutePageAsync(sql, options, offset: null, ct);
         var hasLimitClause = sql.Contains("LIMIT", StringComparison.OrdinalIgnoreCase);
 
-        var nextToken = !hasLimitClause && result.Rows.Count >= options.PageSize
+        var nextToken = !hasLimitClause && options.ApplyDefaultLimit && result.Rows.Count >= options.PageSize
             ? new QueryPageToken($"offset:{options.PageSize}")
             : null;
 
@@ -33,7 +33,9 @@ public sealed class QueryPager : IQueryPager
             Columns: result.Columns,
             Rows: result.Rows.Select(r => r.Values).ToList(),
             NextToken: nextToken,
-            Timings: result.Timings
+            Timings: result.Timings,
+            DefaultLimitApplied: result.DefaultLimitApplied,
+            AppliedDefaultLimit: result.DefaultLimitApplied ? options.PageSize : null
         );
     }
 
@@ -54,7 +56,9 @@ public sealed class QueryPager : IQueryPager
             Columns: result.Columns,
             Rows: result.Rows.Select(r => r.Values).ToList(),
             NextToken: nextToken,
-            Timings: result.Timings
+            Timings: result.Timings,
+            DefaultLimitApplied: false,
+            AppliedDefaultLimit: null
         );
     }
 

@@ -38,7 +38,9 @@ public sealed class TableNode : SchemaNode
     public override string NodeType => "Table";
     public string Schema { get; }
     public List<ColumnNode> Columns { get; } = new();
+    public List<ForeignKeyNode> ForeignKeys { get; } = new();
     public List<IndexNode> Indexes { get; } = new();
+    public List<TriggerNode> Triggers { get; } = new();
 
     public TableNode(string schema, string name) : base(name)
     {
@@ -54,6 +56,7 @@ public sealed class ViewNode : SchemaNode
     public override string NodeType => "View";
     public string Schema { get; }
     public List<ColumnNode> Columns { get; } = new();
+    public List<TriggerNode> Triggers { get; } = new();
 
     public ViewNode(string schema, string name) : base(name)
     {
@@ -101,5 +104,47 @@ public sealed class IndexNode : SchemaNode
     {
         IsUnique = isUnique;
         Columns = columns ?? new List<string>();
+    }
+}
+
+/// <summary>
+/// Represents a foreign key from a source column to a referenced table/column.
+/// </summary>
+public sealed class ForeignKeyNode : SchemaNode
+{
+    public override string NodeType => "ForeignKey";
+    public string ColumnName { get; }
+    public string ReferencedTable { get; }
+    public string ReferencedColumn { get; }
+
+    public ForeignKeyNode(string name, string columnName, string referencedTable, string referencedColumn)
+        : base(name)
+    {
+        ColumnName = columnName;
+        ReferencedTable = referencedTable;
+        ReferencedColumn = referencedColumn;
+    }
+
+    public string DisplayText => $"{ColumnName} -> {ReferencedTable}({ReferencedColumn})";
+}
+
+/// <summary>
+/// Represents a table/view trigger.
+/// </summary>
+public sealed class TriggerNode : SchemaNode
+{
+    public override string NodeType => "Trigger";
+    public string Timing { get; }
+    public string Event { get; }
+    public string ParentObjectName { get; }
+    public string? SourceSql { get; }
+
+    public TriggerNode(string name, string timing, string triggerEvent, string parentObjectName, string? sourceSql = null)
+        : base(name)
+    {
+        Timing = timing;
+        Event = triggerEvent;
+        ParentObjectName = parentObjectName;
+        SourceSql = sourceSql;
     }
 }

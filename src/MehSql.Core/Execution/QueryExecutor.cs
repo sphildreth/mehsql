@@ -55,7 +55,8 @@ public sealed record QueryResult(
     IReadOnlyList<ColumnInfo> Columns,
     IReadOnlyList<ResultRow> Rows,
     QueryTimings Timings,
-    int TotalRowCount);
+    int TotalRowCount,
+    bool DefaultLimitApplied);
 
 /// <summary>
 /// Default implementation of IQueryExecutor using DecentDB.
@@ -146,15 +147,17 @@ public sealed class QueryExecutor : IQueryExecutor
         // Normalize a trailing terminator so appended paging clauses remain valid SQL.
         var sqlForPaging = TrimTrailingTerminator(sql);
         var paginatedSql = sqlForPaging;
+        var defaultLimitApplied = false;
         if (offset.HasValue)
         {
             paginatedSql = $"{sqlForPaging} LIMIT {options.PageSize} OFFSET {offset.Value}";
             Log.Logger.Debug("Applied pagination with OFFSET: {Offset}, LIMIT: {Limit}", offset.Value, options.PageSize);
         }
-        else if (!ContainsLimitClause(sqlForPaging))
+        else if (options.ApplyDefaultLimit && !ContainsLimitClause(sqlForPaging))
         {
             // Add limit for first page if not already present
             paginatedSql = $"{sqlForPaging} LIMIT {options.PageSize}";
+            defaultLimitApplied = true;
             Log.Logger.Debug("Applied initial LIMIT: {Limit} for first page", options.PageSize);
         }
 
@@ -209,7 +212,7 @@ public sealed class QueryExecutor : IQueryExecutor
         Log.Logger.Information("Query execution completed: {RowCount} rows, DB: {DbTime}ms, Fetch: {FetchTime}ms", 
             rows.Count, dbStopwatch.ElapsedMilliseconds, fetchStopwatch.ElapsedMilliseconds);
 
-        return new QueryResult(columns, rows, timings, totalCount);
+        return new QueryResult(columns, rows, timings, totalCount, defaultLimitApplied);
     }
 
     private static async Task<int> GetTotalCountAsync(string sql, DecentDBConnection connection, CancellationToken ct)

@@ -236,4 +236,55 @@ public sealed class ResultsViewModelTests
         Assert.NotNull(vm.ExecutionPlan);
         Assert.True(vm.ExecutionPlan.IsAnalyzed);
     }
+
+    [Fact]
+    public async Task RunAsync_TracksAppliedDefaultLimit()
+    {
+        var pager = new Mock<IQueryPager>(MockBehavior.Strict);
+        var explainService = CreateMockExplainService();
+        var exportService = CreateMockExportService();
+
+        pager.Setup(p => p.ExecuteFirstPageAsync(It.IsAny<string>(), It.IsAny<QueryOptions>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new QueryPage(
+                 Columns: new[] { new ColumnInfo("id", "bigint") },
+                 Rows: new List<IReadOnlyDictionary<string, object?>>(),
+                 NextToken: null,
+                 Timings: new QueryTimings(TimeSpan.FromMilliseconds(1), TimeSpan.FromMilliseconds(1), null),
+                 DefaultLimitApplied: true,
+                 AppliedDefaultLimit: 500
+             ));
+
+        var vm = new ResultsViewModel(pager.Object, explainService.Object, exportService.Object);
+        await vm.RunAsync(CancellationToken.None);
+
+        Assert.True(vm.DefaultLimitApplied);
+        Assert.Equal(500, vm.AppliedDefaultLimit);
+    }
+
+    [Fact]
+    public async Task RunAsync_PassesApplyDefaultLimitFlag()
+    {
+        var pager = new Mock<IQueryPager>(MockBehavior.Strict);
+        var explainService = CreateMockExplainService();
+        var exportService = CreateMockExportService();
+
+        pager.Setup(p => p.ExecuteFirstPageAsync(
+                It.IsAny<string>(),
+                It.Is<QueryOptions>(o => !o.ApplyDefaultLimit),
+                It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new QueryPage(
+                 Columns: new[] { new ColumnInfo("id", "bigint") },
+                 Rows: new List<IReadOnlyDictionary<string, object?>>(),
+                 NextToken: null,
+                 Timings: new QueryTimings(TimeSpan.FromMilliseconds(1), TimeSpan.FromMilliseconds(1), null)
+             ));
+
+        var vm = new ResultsViewModel(pager.Object, explainService.Object, exportService.Object)
+        {
+            ApplyDefaultLimit = false
+        };
+
+        await vm.RunAsync(CancellationToken.None);
+        pager.VerifyAll();
+    }
 }

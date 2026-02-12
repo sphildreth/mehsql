@@ -55,7 +55,7 @@ public partial class MainWindow : Window
         
         Log.Logger.Information("MainWindow constructor completed");
 
-        // Rebuild results table when Columns changes; populate recent files menu
+        // Rebuild results table when Columns changes; populate recent files menus
         DataContextChanged += (_, _) =>
         {
             if (DataContext is MainWindowViewModel vm)
@@ -88,12 +88,20 @@ public partial class MainWindow : Window
                     {
                         SqlEditor.AutocompleteCache = vm.AutocompleteCache;
                     }
+                    else if (args.PropertyName == nameof(vm.PendingFindText) &&
+                             !string.IsNullOrWhiteSpace(vm.PendingFindText))
+                    {
+                        FindTextBox.Text = vm.PendingFindText;
+                        ShowFindPanel(showReplace: false);
+                        SqlEditor.FindNext(vm.PendingFindText);
+                        vm.ClearPendingFindText();
+                    }
                 };
-
-                // Removed SqlEditor.TextChanged - binding handled by HighlightedSqlEditor internally
 
                 RebuildRecentFilesMenu(vm);
                 vm.RecentFiles.CollectionChanged += (_, _) => RebuildRecentFilesMenu(vm);
+                RebuildRecentSqlFilesMenu(vm);
+                vm.RecentSqlFiles.CollectionChanged += (_, _) => RebuildRecentSqlFilesMenu(vm);
             }
         };
     }
@@ -117,29 +125,38 @@ public partial class MainWindow : Window
 
     private void OnSqlEditorLoaded(object? sender, RoutedEventArgs e)
     {
-        Log.Information("SqlEditor Loaded - adding Ctrl+Enter keybinding");
-        
-        if (DataContext is MainWindowViewModel vm && sender is Controls.HighlightedSqlEditor editor)
+        if (sender is Controls.HighlightedSqlEditor editor)
         {
-            // Add Ctrl+Enter and F5 keybindings for running query
             editor.AddKeyBinding(new KeyBinding
             {
                 Gesture = new KeyGesture(Key.Enter, KeyModifiers.Control),
-                Command = vm.RunQueryCommand
+                Command = ReactiveCommand.CreateFromTask(async () => await ExecuteRunFromEditorAsync())
             });
             editor.AddKeyBinding(new KeyBinding
             {
                 Gesture = new KeyGesture(Key.F5),
-                Command = vm.RunQueryCommand
+                Command = ReactiveCommand.CreateFromTask(async () => await ExecuteRunFromEditorAsync())
             });
-
-            Log.Information("SQL Editor initialized with Ctrl+Enter and F5 keybindings");
+            editor.AddKeyBinding(new KeyBinding
+            {
+                Gesture = new KeyGesture(Key.F, KeyModifiers.Control),
+                Command = ReactiveCommand.Create(() => ShowFindPanel(showReplace: false))
+            });
+            editor.AddKeyBinding(new KeyBinding
+            {
+                Gesture = new KeyGesture(Key.H, KeyModifiers.Control),
+                Command = ReactiveCommand.Create(() => ShowFindPanel(showReplace: true))
+            });
+            editor.AddKeyBinding(new KeyBinding
+            {
+                Gesture = new KeyGesture(Key.F, KeyModifiers.Control | KeyModifiers.Shift),
+                Command = ReactiveCommand.Create(() => OnFormatSqlClick(null, new RoutedEventArgs()))
+            });
         }
     }
 
     private void RegisterKeyboardShortcuts()
     {
-        // File menu shortcuts
         this.KeyBindings.Add(new KeyBinding
         {
             Gesture = new KeyGesture(Key.N, KeyModifiers.Control),
@@ -158,7 +175,18 @@ public partial class MainWindow : Window
             Command = ReactiveCommand.Create(() => OnOpenSqlFileClick(null, new RoutedEventArgs()))
         });
 
-        // Edit menu shortcuts
+        this.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.S, KeyModifiers.Control),
+            Command = ReactiveCommand.Create(() => OnSaveSqlFileClick(null, new RoutedEventArgs()))
+        });
+
+        this.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.S, KeyModifiers.Control | KeyModifiers.Shift),
+            Command = ReactiveCommand.Create(() => OnSaveSqlFileAsClick(null, new RoutedEventArgs()))
+        });
+
         this.KeyBindings.Add(new KeyBinding
         {
             Gesture = new KeyGesture(Key.OemComma, KeyModifiers.Control),
@@ -167,8 +195,68 @@ public partial class MainWindow : Window
 
         this.KeyBindings.Add(new KeyBinding
         {
-            Gesture = new KeyGesture(Key.T, KeyModifiers.Control),
+            Gesture = new KeyGesture(Key.T, KeyModifiers.Control | KeyModifiers.Alt),
             Command = ReactiveCommand.Create(() => OnToggleThemeClick(null, new RoutedEventArgs()))
+        });
+
+        this.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.T, KeyModifiers.Control),
+            Command = ReactiveCommand.Create(() =>
+            {
+                if (DataContext is MainWindowViewModel vm)
+                {
+                    vm.AddNewQueryTab();
+                }
+            })
+        });
+
+        this.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.W, KeyModifiers.Control),
+            Command = ReactiveCommand.Create(() => OnCloseCurrentTabClick(null, new RoutedEventArgs()))
+        });
+
+        this.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.Escape),
+            Command = ReactiveCommand.Create(() =>
+            {
+                if (DataContext is MainWindowViewModel vm)
+                {
+                    vm.CancelQueryCommand.Execute(null);
+                }
+            })
+        });
+
+        this.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.Enter, KeyModifiers.Control),
+            Command = ReactiveCommand.CreateFromTask(async () => await ExecuteRunFromEditorAsync())
+        });
+
+        this.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.E, KeyModifiers.Control),
+            Command = ReactiveCommand.Create(() =>
+            {
+                if (DataContext is MainWindowViewModel vm)
+                {
+                    vm.Results.ExplainQueryCommand.Execute(null);
+                }
+            })
+        });
+
+        this.KeyBindings.Add(new KeyBinding
+        {
+            Gesture = new KeyGesture(Key.E, KeyModifiers.Control | KeyModifiers.Shift),
+            Command = ReactiveCommand.Create(() =>
+            {
+                if (DataContext is MainWindowViewModel vm)
+                {
+                    vm.Results.ExplainAnalyzeCommand.Execute(null);
+                }
+            })
         });
     }
 
@@ -265,6 +353,39 @@ public partial class MainWindow : Window
         }
     }
 
+    private void RebuildRecentSqlFilesMenu(MainWindowViewModel vm)
+    {
+        RecentSqlFilesMenu.Items.Clear();
+
+        if (vm.RecentSqlFiles.Count == 0)
+        {
+            RecentSqlFilesMenu.IsEnabled = false;
+            RecentSqlFilesMenu.Items.Add(new MenuItem { Header = "(none)" });
+            return;
+        }
+
+        RecentSqlFilesMenu.IsEnabled = true;
+        foreach (var path in vm.RecentSqlFiles)
+        {
+            var item = new MenuItem
+            {
+                Header = System.IO.Path.GetFileName(path),
+                Tag = path
+            };
+
+            ToolTip.SetTip(item, path);
+            item.Click += async (_, _) =>
+            {
+                if (item.Tag is string filePath)
+                {
+                    await vm.OpenSqlFileInTabAsync(filePath, openInNewTab: true);
+                }
+            };
+
+            RecentSqlFilesMenu.Items.Add(item);
+        }
+    }
+
     private void RebuildResultsTable(ResultsViewModel results)
     {
         var sw = Stopwatch.StartNew();
@@ -335,13 +456,33 @@ public partial class MainWindow : Window
             for (var i = 0; i < columns.Count; i++)
             {
                 var val = row.TryGetValue(columns[i].Name, out var v) ? v?.ToString() ?? "" : "";
-                panel.Children.Add(new TextBlock
+                var textBlock = new TextBlock
                 {
                     Text = val,
-                    Width = widths[i],
                     Padding = new Thickness(6, 3),
                     TextTrimming = TextTrimming.CharacterEllipsis
-                });
+                };
+
+                var cell = new Border
+                {
+                    Width = widths[i],
+                    Child = textBlock
+                };
+
+                var contextMenu = new ContextMenu();
+                var copyCell = new MenuItem { Header = "Copy Cell" };
+                copyCell.Click += async (_, _) => await CopyToClipboardAsync(val);
+                var copyRowTsv = new MenuItem { Header = "Copy Row (TSV)" };
+                copyRowTsv.Click += async (_, _) => await CopyToClipboardAsync(BuildDelimitedRow(row, columns, "\t"));
+                var copyRowCsv = new MenuItem { Header = "Copy Row (CSV)" };
+                copyRowCsv.Click += async (_, _) => await CopyToClipboardAsync(BuildDelimitedRow(row, columns, ","));
+
+                contextMenu.Items.Add(copyCell);
+                contextMenu.Items.Add(copyRowTsv);
+                contextMenu.Items.Add(copyRowCsv);
+                cell.ContextMenu = contextMenu;
+                panel.Children.Add(cell);
+
                 // Spacer matching the grip width
                 if (i < columns.Count - 1)
                 {
@@ -426,8 +567,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void UpdateVisibleRowWidths(int colIndex, double newWidth)
     {
-        // Each row panel has: TextBlock, Spacer, TextBlock, Spacer, ... TextBlock
-        // So TextBlock index = colIndex * 2 (for cols after first, they have spacer before them)
+        // Each row panel has: Border(Cell), Spacer, Border(Cell), Spacer, ...
         var childIndex = colIndex > 0 ? colIndex * 2 : 0;
 
         foreach (var container in ResultsItemsControl.GetVisualDescendants().OfType<ListBoxItem>())
@@ -436,9 +576,9 @@ public partial class MainWindow : Window
             var panel = presenter?.GetVisualDescendants().OfType<StackPanel>().FirstOrDefault();
             if (panel is null || childIndex >= panel.Children.Count) continue;
 
-            if (panel.Children[childIndex] is TextBlock tb)
+            if (panel.Children[childIndex] is Border border)
             {
-                tb.Width = newWidth;
+                border.Width = newWidth;
             }
         }
     }
@@ -478,6 +618,37 @@ public partial class MainWindow : Window
         }
 
         return widths;
+    }
+
+    private static string BuildDelimitedRow(
+        IReadOnlyDictionary<string, object?> row,
+        IReadOnlyList<ColumnInfo> columns,
+        string delimiter)
+    {
+        var values = new List<string>(columns.Count);
+        foreach (var column in columns)
+        {
+            var value = row.TryGetValue(column.Name, out var raw) ? raw?.ToString() ?? string.Empty : string.Empty;
+            if (delimiter == ",")
+            {
+                var escaped = value.Replace("\"", "\"\"", StringComparison.Ordinal);
+                values.Add($"\"{escaped}\"");
+            }
+            else
+            {
+                values.Add(value);
+            }
+        }
+
+        return string.Join(delimiter, values);
+    }
+
+    private async Task CopyToClipboardAsync(string text)
+    {
+        if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+        {
+            await clipboard.SetTextAsync(text ?? string.Empty);
+        }
     }
 
     private async void OnOpenDatabaseClick(object? sender, RoutedEventArgs e)
@@ -520,13 +691,191 @@ public partial class MainWindow : Window
         {
             try
             {
-                var sqlText = await File.ReadAllTextAsync(files[0].Path.LocalPath);
-                vm.SqlText = sqlText;
+                await vm.OpenSqlFileInTabAsync(files[0].Path.LocalPath, openInNewTab: true);
             }
             catch (Exception ex)
             {
                 Serilog.Log.Logger.Warning(ex, "Failed to read SQL file: {Path}", files[0].Path.LocalPath);
             }
+        }
+    }
+
+    private async void OnSaveSqlFileClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        if (!string.IsNullOrWhiteSpace(vm.ActiveSqlFilePath))
+        {
+            await vm.SaveActiveSqlFileAsync(vm.ActiveSqlFilePath);
+            return;
+        }
+
+        await SaveSqlAsAsync(vm);
+    }
+
+    private async void OnSaveSqlFileAsClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        await SaveSqlAsAsync(vm);
+    }
+
+    private async Task SaveSqlAsAsync(MainWindowViewModel vm)
+    {
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save SQL File",
+            DefaultExtension = "sql",
+            SuggestedFileName = vm.SelectedQueryTab?.Title is { Length: > 0 } title ? $"{title}.sql" : "query.sql",
+            FileTypeChoices =
+            [
+                new FilePickerFileType("SQL Files") { Patterns = ["*.sql"] },
+                new FilePickerFileType("All Files") { Patterns = ["*"] }
+            ]
+        });
+
+        if (file is not null)
+        {
+            await vm.SaveActiveSqlFileAsync(file.Path.LocalPath);
+        }
+    }
+
+    private async void OnOpenInExternalEditorClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm || vm.SelectedQueryTab is null)
+        {
+            return;
+        }
+
+        var path = vm.ActiveSqlFilePath;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            path = Path.Combine(Path.GetTempPath(), $"mehsql_{Guid.NewGuid():N}.sql");
+            await vm.SaveActiveSqlFileAsync(path);
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = path,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorDialogAsync("External Editor", $"Unable to open file in external editor:\n{ex.Message}");
+        }
+    }
+
+    private async void OnRunQueryClick(object? sender, RoutedEventArgs e)
+    {
+        await ExecuteRunFromEditorAsync();
+    }
+
+    private async Task ExecuteRunFromEditorAsync()
+    {
+        if (DataContext is not MainWindowViewModel vm)
+        {
+            return;
+        }
+
+        var request = SqlExecutionPlanner.Create(SqlEditor.Text, SqlEditor.SelectedText, SqlEditor.CaretIndex);
+        await vm.ExecutePlannedQueryAsync(request);
+    }
+
+    private void OnExplainClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.Results.ExplainQueryCommand.Execute(null);
+        }
+    }
+
+    private void OnExplainAnalyzeClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.Results.ExplainAnalyzeCommand.Execute(null);
+        }
+    }
+
+    private void OnShowFindClick(object? sender, RoutedEventArgs e)
+    {
+        ShowFindPanel(showReplace: false);
+    }
+
+    private void OnShowReplaceClick(object? sender, RoutedEventArgs e)
+    {
+        ShowFindPanel(showReplace: true);
+    }
+
+    private void ShowFindPanel(bool showReplace)
+    {
+        FindReplacePanel.IsVisible = true;
+        ReplaceTextBox.IsVisible = showReplace;
+        FindTextBox.Focus();
+        if (!string.IsNullOrWhiteSpace(SqlEditor.SelectedText))
+        {
+            FindTextBox.Text = SqlEditor.SelectedText;
+        }
+    }
+
+    private void OnCloseFindReplaceClick(object? sender, RoutedEventArgs e)
+    {
+        FindReplacePanel.IsVisible = false;
+    }
+
+    private void OnFindNextClick(object? sender, RoutedEventArgs e)
+    {
+        if (!SqlEditor.FindNext(FindTextBox.Text ?? string.Empty))
+        {
+            _ = ShowErrorDialogAsync("Find", "No match found.");
+        }
+    }
+
+    private void OnReplaceClick(object? sender, RoutedEventArgs e)
+    {
+        SqlEditor.ReplaceNext(FindTextBox.Text ?? string.Empty, ReplaceTextBox.Text ?? string.Empty);
+    }
+
+    private void OnReplaceAllClick(object? sender, RoutedEventArgs e)
+    {
+        var replaced = SqlEditor.ReplaceAll(FindTextBox.Text ?? string.Empty, ReplaceTextBox.Text ?? string.Empty);
+        if (replaced == 0)
+        {
+            _ = ShowErrorDialogAsync("Replace", "No matches found.");
+        }
+    }
+
+    private void OnFormatSqlClick(object? sender, RoutedEventArgs e)
+    {
+        if (SqlEditor.HasSelection)
+        {
+            var formattedSelection = SimpleSqlFormatter.Format(SqlEditor.SelectedText);
+            SqlEditor.ReplaceSelection(formattedSelection);
+            return;
+        }
+
+        SqlEditor.Text = SimpleSqlFormatter.Format(SqlEditor.Text);
+    }
+
+    private void OnCloseCurrentTabClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.CloseQueryTab(vm.SelectedQueryTab);
+        }
+    }
+
+    private async void OnRenameTabClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        if (sender is not MenuItem { DataContext: QueryTabViewModel tab }) return;
+
+        var newName = await ShowInputDialogAsync("Rename Tab", "Tab name:", tab.Title);
+        if (!string.IsNullOrWhiteSpace(newName))
+        {
+            vm.RenameQueryTab(tab, newName);
         }
     }
 
@@ -693,6 +1042,59 @@ public partial class MainWindow : Window
         await errorWin.ShowDialog(this);
     }
 
+    private async Task<string?> ShowInputDialogAsync(string title, string prompt, string initialValue)
+    {
+        var input = new TextBox { Width = 320, Text = initialValue };
+        string? result = null;
+
+        var okButton = new Button
+        {
+            Content = "OK",
+            Padding = new Thickness(16, 6)
+        };
+        var cancelButton = new Button
+        {
+            Content = "Cancel",
+            Padding = new Thickness(16, 6)
+        };
+
+        var dialog = new Window
+        {
+            Title = title,
+            Width = 420,
+            Height = 180,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
+            {
+                Margin = new Thickness(16),
+                Spacing = 10,
+                Children =
+                {
+                    new TextBlock { Text = prompt },
+                    input,
+                    new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        HorizontalAlignment = HorizontalAlignment.Right,
+                        Spacing = 8,
+                        Children = { cancelButton, okButton }
+                    }
+                }
+            }
+        };
+
+        okButton.Click += (_, _) =>
+        {
+            result = input.Text;
+            dialog.Close();
+        };
+        cancelButton.Click += (_, _) => dialog.Close();
+
+        await dialog.ShowDialog(this);
+        return result;
+    }
+
     private void OnExitClick(object? sender, RoutedEventArgs e)
     {
         Close();
@@ -748,8 +1150,7 @@ public partial class MainWindow : Window
                 {
                     try
                     {
-                        var sqlText = await File.ReadAllTextAsync(sqlFile.Path.LocalPath);
-                        vm.SqlText = sqlText;
+                        await vm.OpenSqlFileInTabAsync(sqlFile.Path.LocalPath, openInNewTab: true);
                     }
                     catch (Exception ex)
                     {
@@ -760,6 +1161,32 @@ public partial class MainWindow : Window
         }
 
         e.Handled = true;
+    }
+
+    private async void OnCopyRowsAsTsvClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm || vm.Results.Rows.Count == 0)
+        {
+            return;
+        }
+
+        var header = string.Join("\t", vm.Results.Columns.Select(c => c.Name));
+        var lines = new List<string> { header };
+        lines.AddRange(vm.Results.Rows.Select(r => BuildDelimitedRow(r, vm.Results.Columns, "\t")));
+        await CopyToClipboardAsync(string.Join(Environment.NewLine, lines));
+    }
+
+    private async void OnCopyRowsAsCsvClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm || vm.Results.Rows.Count == 0)
+        {
+            return;
+        }
+
+        var header = string.Join(",", vm.Results.Columns.Select(c => $"\"{c.Name.Replace("\"", "\"\"", StringComparison.Ordinal)}\""));
+        var lines = new List<string> { header };
+        lines.AddRange(vm.Results.Rows.Select(r => BuildDelimitedRow(r, vm.Results.Columns, ",")));
+        await CopyToClipboardAsync(string.Join(Environment.NewLine, lines));
     }
 
     private async void OnExportCsvClick(object? sender, RoutedEventArgs e)

@@ -6,6 +6,7 @@
         xmlns:controls="using:MehSql.App.Controls"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="MehSql.App.Views.MainWindow"
+        x:Name="RootWindow"
         x:DataType="vm:MainWindowViewModel"
         DragDrop.AllowDrop="True"
         Width="1400" Height="900"
@@ -17,41 +18,58 @@
   </Design.DataContext>
 
   <Grid RowDefinitions="Auto,*">
-    <!-- Menu Bar -->
     <Menu Grid.Row="0" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource TextBrush}">
       <MenuItem Header="_File" Foreground="{StaticResource TextBrush}">
         <MenuItem Header="_New Database" InputGesture="Ctrl+N" Click="OnNewDatabaseClick"/>
         <MenuItem Header="_Open Database" InputGesture="Ctrl+O" Click="OnOpenDatabaseClick"/>
         <MenuItem Header="Open _SQL File" InputGesture="Ctrl+Shift+O" Click="OnOpenSqlFileClick"/>
+        <MenuItem Header="_Save SQL" InputGesture="Ctrl+S" Click="OnSaveSqlFileClick"/>
+        <MenuItem Header="Save SQL _As..." InputGesture="Ctrl+Shift+S" Click="OnSaveSqlFileAsClick"/>
+        <MenuItem Header="Open in _External Editor" Click="OnOpenInExternalEditorClick"/>
+        <Separator/>
         <MenuItem Header="_Import Database..." Click="OnImportDatabaseClick"/>
         <MenuItem Header="Import MySQL Shell _Dump Folder..." Click="OnImportDumpFolderClick"/>
-        <MenuItem Header="_Recent" x:Name="RecentFilesMenu" IsEnabled="False">
+        <Separator/>
+        <MenuItem Header="Recent _Databases" x:Name="RecentFilesMenu" IsEnabled="False">
+          <MenuItem Header="(none)"/>
+        </MenuItem>
+        <MenuItem Header="Recent _SQL Files" x:Name="RecentSqlFilesMenu" IsEnabled="False">
           <MenuItem Header="(none)"/>
         </MenuItem>
         <Separator/>
         <MenuItem Header="E_xit" InputGesture="Alt+F4" Click="OnExitClick"/>
       </MenuItem>
+
       <MenuItem Header="_Edit" Foreground="{StaticResource TextBrush}">
+        <MenuItem Header="_Find" InputGesture="Ctrl+F" Click="OnShowFindClick"/>
+        <MenuItem Header="_Replace" InputGesture="Ctrl+H" Click="OnShowReplaceClick"/>
+        <MenuItem Header="_Format SQL" InputGesture="Ctrl+Shift+F" Click="OnFormatSqlClick"/>
+        <Separator/>
         <MenuItem Header="_Preferences" InputGesture="Ctrl+," Click="OnPreferencesClick"/>
-        <MenuItem Header="_Toggle Theme" InputGesture="Ctrl+T" Click="OnToggleThemeClick"/>
+        <MenuItem Header="Toggle _Theme" InputGesture="Ctrl+Alt+T" Click="OnToggleThemeClick"/>
       </MenuItem>
-      <MenuItem Header="_View" Foreground="{StaticResource TextBrush}">
-        <MenuItem Header="_Refresh" InputGesture="F5" Command="{Binding RunQueryCommand}"/>
+
+      <MenuItem Header="_Query" Foreground="{StaticResource TextBrush}">
+        <MenuItem Header="_Run" InputGesture="Ctrl+Enter" Click="OnRunQueryClick"/>
+        <MenuItem Header="_Cancel" InputGesture="Escape" Command="{Binding CancelQueryCommand}"/>
+        <MenuItem Header="_Explain" InputGesture="Ctrl+E" Click="OnExplainClick"/>
+        <MenuItem Header="Explain _Analyze" InputGesture="Ctrl+Shift+E" Click="OnExplainAnalyzeClick"/>
+        <Separator/>
+        <MenuItem Header="_New Query Tab" InputGesture="Ctrl+T" Command="{Binding NewQueryTabCommand}"/>
+        <MenuItem Header="_Close Query Tab" InputGesture="Ctrl+W" Click="OnCloseCurrentTabClick"/>
       </MenuItem>
+
       <MenuItem Header="_Help" Foreground="{StaticResource TextBrush}">
         <MenuItem Header="_About" Click="OnAboutClick"/>
       </MenuItem>
     </Menu>
 
-    <!-- Main Content: 3-Pane Layout -->
     <Grid Grid.Row="1" ColumnDefinitions="300,5,*">
-
-      <!-- LEFT PANE: Schema Explorer -->
       <Border Grid.Column="0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0" Background="{StaticResource SurfaceBrush}">
         <Grid RowDefinitions="Auto,Auto,*">
           <TextBlock Grid.Row="0" Text="Schema Explorer" FontWeight="Bold" Padding="8" Background="{StaticResource SurfaceLightBrush}" Foreground="{StaticResource TextBrush}"/>
           <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="4" Margin="4">
-            <Button Content="🔄 Refresh" Command="{Binding SchemaExplorer.RefreshCommand}" IsEnabled="{Binding !SchemaExplorer.IsLoading}"/>
+            <Button Content="Refresh" Command="{Binding SchemaExplorer.RefreshCommand}" IsEnabled="{Binding !SchemaExplorer.IsLoading}"/>
             <ProgressBar IsVisible="{Binding SchemaExplorer.IsLoading}" IsIndeterminate="True" Width="60" VerticalAlignment="Center"/>
           </StackPanel>
           <TreeView Grid.Row="2" Margin="4" ItemsSource="{Binding SchemaExplorer.RootNodes}">
@@ -59,8 +77,15 @@
               <TreeDataTemplate ItemsSource="{Binding Children}">
                 <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource TextBrush}">
                   <TextBlock.ContextMenu>
-                    <ContextMenu IsVisible="{Binding SelectTopRowsCommand, Converter={x:Static ObjectConverters.IsNotNull}}">
-                      <MenuItem Header="SELECT TOP 1000 Rows" Command="{Binding SelectTopRowsCommand}" />
+                    <ContextMenu>
+                      <MenuItem Header="New Query Tab" Command="{Binding NewQueryTabCommand}" IsVisible="{Binding NewQueryTabCommand, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                      <MenuItem Header="Refresh Schema" Command="{Binding RefreshSchemaCommand}" IsVisible="{Binding RefreshSchemaCommand, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                      <MenuItem Header="Properties" Command="{Binding ShowPropertiesCommand}" IsVisible="{Binding ShowPropertiesCommand, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                      <MenuItem Header="Find References" Command="{Binding FindReferencesCommand}" IsVisible="{Binding FindReferencesCommand, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                      <MenuItem Header="Select Top Rows" Command="{Binding SelectTopRowsCommand}" IsVisible="{Binding SelectTopRowsCommand, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                      <MenuItem Header="View DDL" Command="{Binding ViewDdlCommand}" IsVisible="{Binding ViewDdlCommand, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                      <MenuItem Header="Generate CRUD Templates" Command="{Binding GenerateCrudCommand}" IsVisible="{Binding GenerateCrudCommand, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                      <MenuItem Header="Drop..." Command="{Binding DropCommand}" IsVisible="{Binding DropCommand, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                     </ContextMenu>
                   </TextBlock.ContextMenu>
                 </TextBlock>
@@ -70,42 +95,69 @@
         </Grid>
       </Border>
 
-      <!-- Splitter -->
       <GridSplitter Grid.Column="1" Background="{StaticResource BorderBrush}" Width="5" HorizontalAlignment="Stretch"/>
 
-      <!-- RIGHT PANE: Split into Top (Editor) and Bottom (Results) -->
       <Grid Grid.Column="2" RowDefinitions="*,5,*">
-
-        <!-- TOP RIGHT: SQL Editor -->
-        <Grid Grid.Row="0" RowDefinitions="Auto,*">
-          <!-- Toolbar -->
+        <Grid Grid.Row="0" RowDefinitions="Auto,Auto,Auto,*">
           <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Background="{StaticResource SurfaceLightBrush}">
             <TextBlock Grid.Column="0" Text="SQL Editor" FontWeight="Bold" Padding="8" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="8">
-              <Button Content="📂 Open SQL" Click="OnOpenSqlFileClick" Padding="8,4" ToolTip.Tip="Open a .sql file (Ctrl+Shift+O)"/>
-              <Button Classes="primary" Content="Run" Command="{Binding RunQueryCommand}" IsEnabled="{Binding !IsExecuting}" Padding="12,4"/>
+              <Button Content="New Tab" Command="{Binding NewQueryTabCommand}" Padding="8,4"/>
+              <Button Content="Open SQL" Click="OnOpenSqlFileClick" Padding="8,4"/>
+              <Button Content="Save" Click="OnSaveSqlFileClick" Padding="8,4"/>
+              <Button Content="Save As" Click="OnSaveSqlFileAsClick" Padding="8,4"/>
+              <Button Content="Format" Click="OnFormatSqlClick" Padding="8,4"/>
+              <Button Classes="primary" Content="Run" Click="OnRunQueryClick" Padding="12,4" IsEnabled="{Binding !IsExecuting}"/>
               <Button Content="Cancel" Command="{Binding CancelQueryCommand}" IsEnabled="{Binding IsExecuting}" Padding="12,4"/>
+              <CheckBox Content="Safe LIMIT" IsChecked="{Binding Results.ApplyDefaultLimit}" VerticalAlignment="Center" Margin="8,0,0,0"/>
               <ProgressBar IsVisible="{Binding IsExecuting}" IsIndeterminate="True" Width="60" VerticalAlignment="Center" Margin="8,0,0,0"/>
             </StackPanel>
           </Grid>
 
-          <!-- SQL Editor with Syntax Highlighting -->
+          <Border Grid.Row="1" x:Name="FindReplacePanel" IsVisible="False" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,1" Background="{StaticResource SurfaceBrush}" Padding="8">
+            <WrapPanel Orientation="Horizontal" ItemHeight="28" VerticalAlignment="Center">
+              <TextBlock Text="Find" VerticalAlignment="Center" Margin="0,0,6,0"/>
+              <TextBox x:Name="FindTextBox" Width="220" Watermark="Find text" Margin="0,0,8,0"/>
+              <TextBlock Text="Replace" VerticalAlignment="Center" Margin="0,0,6,0"/>
+              <TextBox x:Name="ReplaceTextBox" Width="220" Watermark="Replace with" Margin="0,0,8,0"/>
+              <Button Content="Find Next" Click="OnFindNextClick" Margin="0,0,4,0"/>
+              <Button Content="Replace" Click="OnReplaceClick" Margin="0,0,4,0"/>
+              <Button Content="Replace All" Click="OnReplaceAllClick" Margin="0,0,4,0"/>
+              <Button Content="Close" Click="OnCloseFindReplaceClick"/>
+            </WrapPanel>
+          </Border>
+
+          <TabStrip Grid.Row="2" ItemsSource="{Binding QueryTabs}" SelectedItem="{Binding SelectedQueryTab}">
+            <TabStrip.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Header}">
+                  <TextBlock.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem Header="Rename Tab..." Click="OnRenameTabClick"/>
+                      <MenuItem Header="Move Left" Command="{Binding DataContext.MoveTabLeftCommand, ElementName=RootWindow}" CommandParameter="{Binding}"/>
+                      <MenuItem Header="Move Right" Command="{Binding DataContext.MoveTabRightCommand, ElementName=RootWindow}" CommandParameter="{Binding}"/>
+                      <Separator/>
+                      <MenuItem Header="Close Tab" Command="{Binding DataContext.CloseQueryTabCommand, ElementName=RootWindow}" CommandParameter="{Binding}"/>
+                    </ContextMenu>
+                  </TextBlock.ContextMenu>
+                </TextBlock>
+              </DataTemplate>
+            </TabStrip.ItemTemplate>
+          </TabStrip>
+
           <controls:HighlightedSqlEditor x:Name="SqlEditor"
-                   Grid.Row="1"
-                   Background="{StaticResource SurfaceBrush}"
-                   BorderBrush="{StaticResource BorderBrush}"
-                   BorderThickness="0,1,0,0"
-                   IsDarkTheme="True"
-                   Loaded="OnSqlEditorLoaded"
-                   Text="{Binding SqlText, Mode=TwoWay}" />
+                                         Grid.Row="3"
+                                         Background="{StaticResource SurfaceBrush}"
+                                         BorderBrush="{StaticResource BorderBrush}"
+                                         BorderThickness="0,1,0,0"
+                                         IsDarkTheme="True"
+                                         Loaded="OnSqlEditorLoaded"
+                                         Text="{Binding SqlText, Mode=TwoWay}" />
         </Grid>
 
-        <!-- Horizontal Splitter -->
         <GridSplitter Grid.Row="1" Background="{StaticResource BorderBrush}" Height="5" HorizontalAlignment="Stretch"/>
 
-        <!-- BOTTOM RIGHT: Query Results -->
-        <Grid Grid.Row="2" RowDefinitions="Auto,Auto,*,Auto">
-          <!-- Ordering Warning Panel -->
+        <Grid Grid.Row="2" RowDefinitions="Auto,Auto,Auto,*,Auto">
           <Border Grid.Row="0"
                   Background="{StaticResource WarningBrush}"
                   BorderBrush="{StaticResource WarningBrush}"
@@ -118,8 +170,16 @@
             </StackPanel>
           </Border>
 
-          <!-- Error Panel -->
           <Border Grid.Row="1"
+                  Background="{StaticResource PrimaryBrush}"
+                  BorderBrush="{StaticResource PrimaryBrush}"
+                  BorderThickness="0,0,0,1"
+                  Padding="8"
+                  IsVisible="{Binding Results.DefaultLimitApplied}">
+            <TextBlock Text="{Binding Results.AppliedDefaultLimit, StringFormat='Safe default LIMIT {0} was applied to this run.'}" Foreground="White" FontSize="11"/>
+          </Border>
+
+          <Border Grid.Row="2"
                   Background="{StaticResource ErrorBrush}"
                   BorderBrush="{StaticResource ErrorBrush}"
                   BorderThickness="0,0,0,1"
@@ -131,30 +191,26 @@
             </StackPanel>
           </Border>
 
-          <!-- Results/Explain Tab Control -->
-          <TabControl Grid.Row="2">
+          <TabControl Grid.Row="3">
             <TabItem Header="Results">
               <Grid RowDefinitions="Auto,*">
-                <!-- Results Toolbar -->
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Background="{StaticResource SurfaceLightBrush}">
                   <TextBlock Grid.Column="0" Text="Query Results" FontWeight="Bold" Padding="8" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}"/>
                   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="4">
+                    <Button Content="Copy TSV" Click="OnCopyRowsAsTsvClick" Padding="8,2" FontSize="11"/>
+                    <Button Content="Copy CSV" Click="OnCopyRowsAsCsvClick" Padding="8,2" FontSize="11"/>
                     <Button Content="Export CSV" Click="OnExportCsvClick" Padding="8,2" FontSize="11" IsEnabled="{Binding !Results.IsExporting}"/>
                     <Button Content="Export JSON" Click="OnExportJsonClick" Padding="8,2" FontSize="11" IsEnabled="{Binding !Results.IsExporting}"/>
                     <TextBlock Text="{Binding Results.ExportStatus}" VerticalAlignment="Center" Margin="8,0" FontSize="11" Foreground="{StaticResource TextTertiaryBrush}"/>
                   </StackPanel>
                 </Grid>
 
-
-                <!-- Results Table -->
                 <Grid Grid.Row="1" RowDefinitions="Auto,*">
-                  <!-- Sticky header -->
                   <Border Grid.Row="0" Background="{StaticResource SurfaceLightBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
                     <ScrollViewer x:Name="HeaderScrollViewer" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
                       <StackPanel x:Name="ResultsHeaderRow" Orientation="Horizontal"/>
                     </ScrollViewer>
                   </Border>
-                  <!-- Virtualized rows -->
                   <ListBox Grid.Row="1"
                            x:Name="ResultsItemsControl"
                            Background="{StaticResource SurfaceBrush}"
@@ -176,38 +232,57 @@
 
             <TabItem Header="Explain / Analyze">
               <Grid RowDefinitions="Auto,*">
-                <!-- Explain Toolbar -->
                 <Grid Grid.Row="0" Background="{StaticResource SurfaceLightBrush}" ColumnDefinitions="Auto,Auto,*">
                   <Button Grid.Column="0" Content="Explain" Command="{Binding Results.ExplainQueryCommand}" IsEnabled="{Binding !Results.IsBusy}" Margin="4" Padding="12,4"/>
                   <Button Grid.Column="1" Classes="primary" Content="Explain Analyze" Command="{Binding Results.ExplainAnalyzeCommand}" IsEnabled="{Binding !Results.IsBusy}" Margin="4" Padding="12,4"/>
                   <TextBlock Grid.Column="2" Text="Shows query execution plan" VerticalAlignment="Center" Margin="8,0" Foreground="{StaticResource TextTertiaryBrush}" FontSize="11"/>
                 </Grid>
 
-                <!-- Execution Plan Display -->
                 <Border Grid.Row="1" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
                   <Grid RowDefinitions="Auto,*">
-                    <!-- Error Message -->
                     <Border Grid.Row="0" Background="{StaticResource ErrorBrush}" BorderBrush="{StaticResource ErrorBrush}" BorderThickness="0,0,0,1" Padding="8" IsVisible="{Binding Results.ExecutionPlanError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                       <TextBlock Text="{Binding Results.ExecutionPlanError}" TextWrapping="Wrap" Foreground="White"/>
                     </Border>
 
-                    <!-- Raw Execution Plan Output -->
                     <ScrollViewer Grid.Row="1" IsVisible="{Binding Results.ShowExecutionPlan}">
                       <TextBlock Text="{Binding Results.ExecutionPlan.RawOutput}" FontFamily="Consolas, monospace" FontSize="11" Padding="8" TextWrapping="Wrap" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource TextBrush}"/>
                     </ScrollViewer>
 
-                    <!-- Empty State -->
                     <TextBlock Grid.Row="1" Text="Click 'Explain' or 'Explain Analyze' to see the query execution plan" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{StaticResource TextTertiaryBrush}" IsVisible="{Binding !Results.ShowExecutionPlan}"/>
                   </Grid>
                 </Border>
               </Grid>
             </TabItem>
+
+            <TabItem Header="History">
+              <Grid RowDefinitions="Auto,*">
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="8" ColumnSpacing="8">
+                  <TextBlock Grid.Column="0" Text="Search" VerticalAlignment="Center"/>
+                  <TextBox Grid.Column="1" Text="{Binding QueryHistorySearchText, Mode=TwoWay}" Watermark="Filter query history"/>
+                </Grid>
+
+                <ListBox Grid.Row="1" ItemsSource="{Binding QueryHistory}" Margin="8">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,2">
+                        <TextBlock Grid.Column="0" Text="{Binding DisplayTime}" Foreground="{StaticResource TextTertiaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Preview}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                        <Button Grid.Column="2" Content="Re-run"
+                                Command="{Binding DataContext.ReRunHistoryQueryCommand, ElementName=RootWindow}"
+                                CommandParameter="{Binding}" Padding="8,2" FontSize="11"/>
+                        <Button Grid.Column="3" Content="Open Tab"
+                                Command="{Binding DataContext.OpenHistoryInNewTabCommand, ElementName=RootWindow}"
+                                CommandParameter="{Binding}" Padding="8,2" FontSize="11"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </Grid>
+            </TabItem>
           </TabControl>
 
-          <!-- Performance Panel (Bottom) -->
-          <Border Grid.Row="3" Background="{StaticResource SurfaceLightBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="8">
+          <Border Grid.Row="4" Background="{StaticResource SurfaceLightBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="8">
             <Grid ColumnDefinitions="*,Auto">
-              <!-- Timing Metrics -->
               <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="24">
                 <StackPanel>
                   <TextBlock Text="DB Execution" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
@@ -237,15 +312,17 @@
                 </StackPanel>
               </StackPanel>
 
-              <!-- Planning Time (when available) -->
-              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" IsVisible="{Binding Results.ExecutionPlan.PlanningTime, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <StackPanel>
-                  <TextBlock Text="Planning" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock Text="{Binding Results.ExecutionPlan.PlanningTime, StringFormat='{}{0:F2} ms'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource PrimaryBrush}"/>
-                </StackPanel>
-                <StackPanel IsVisible="{Binding Results.ExecutionPlan.ExecutionTime, Converter={x:Static ObjectConverters.IsNotNull}}">
-                  <TextBlock Text="Execution" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock Text="{Binding Results.ExecutionPlan.ExecutionTime, StringFormat='{}{0:F2} ms'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource PrimaryBrush}"/>
+              <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Right" Spacing="2">
+                <TextBlock Text="{Binding SchemaActionStatus}" Foreground="{StaticResource TextTertiaryBrush}" FontSize="11"/>
+                <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding Results.ExecutionPlan.PlanningTime, Converter={x:Static ObjectConverters.IsNotNull}}">
+                  <StackPanel>
+                    <TextBlock Text="Planning" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
+                    <TextBlock Text="{Binding Results.ExecutionPlan.PlanningTime, StringFormat='{}{0:F2} ms'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource PrimaryBrush}"/>
+                  </StackPanel>
+                  <StackPanel IsVisible="{Binding Results.ExecutionPlan.ExecutionTime, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <TextBlock Text="Execution" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
+                    <TextBlock Text="{Binding Results.ExecutionPlan.ExecutionTime, StringFormat='{}{0:F2} ms'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource PrimaryBrush}"/>
+                  </StackPanel>
                 </StackPanel>
               </StackPanel>
             </Grid>
