@@ -92,6 +92,33 @@ public class SchemaServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetTableForeignKeysAsync_ReturnsEmptyList_WhenCatalogTableUnavailable()
+    {
+        var service = new SchemaService(_connectionFactory);
+        var foreignKeys = await service.GetTableForeignKeysAsync("main", "users");
+
+        Assert.Empty(foreignKeys);
+    }
+
+    [Fact]
+    public async Task GetTableTriggersAsync_ReturnsEmptyList_WhenCatalogTableUnavailable()
+    {
+        var service = new SchemaService(_connectionFactory);
+        var triggers = await service.GetTableTriggersAsync("main", "users");
+
+        Assert.Empty(triggers);
+    }
+
+    [Fact]
+    public async Task GetViewTriggersAsync_ReturnsEmptyList_WhenCatalogTableUnavailable()
+    {
+        var service = new SchemaService(_connectionFactory);
+        var triggers = await service.GetViewTriggersAsync("main", "users_view");
+
+        Assert.Empty(triggers);
+    }
+
+    [Fact]
     public void SchemaNode_CreatesCorrectly()
     {
         var table = new TableNode("public", "users");

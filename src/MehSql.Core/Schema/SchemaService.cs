@@ -63,6 +63,7 @@ public interface ISchemaService
 public sealed class SchemaService : ISchemaService
 {
     private readonly IConnectionFactory _connectionFactory;
+    private HashSet<string>? _catalogTableNames;
 
     public SchemaService(IConnectionFactory connectionFactory)
     {
@@ -110,6 +111,7 @@ public sealed class SchemaService : ISchemaService
         
         Log.Logger.Debug("Getting 'Tables' schema information");
         var dataTable = decentDbConnection.GetSchema("Tables");
+        CacheCatalogTableNames(dataTable);
         Log.Logger.Debug("Retrieved schema data table with {RowCount} rows", dataTable.Rows.Count);
         
         foreach (DataRow row in dataTable.Rows)
@@ -146,6 +148,13 @@ public sealed class SchemaService : ISchemaService
     {
         Log.Logger.Debug("GetViewsAsync called");
         var views = new List<ViewNode>();
+
+        if (!await CatalogTableExistsAsync("views", ct))
+        {
+            Log.Logger.Debug("Skipping view introspection because catalog table 'views' is unavailable");
+            Log.Logger.Information("Successfully retrieved {ViewCount} views", views.Count);
+            return views;
+        }
 
         try
         {
@@ -274,6 +283,11 @@ public sealed class SchemaService : ISchemaService
     {
         var foreignKeys = new List<ForeignKeyNode>();
 
+        if (!await CatalogTableExistsAsync("foreign_keys", ct))
+        {
+            return foreignKeys;
+        }
+
         var escapedTable = EscapeSqlLiteral(tableName);
         var sql = $@"
 SELECT
@@ -313,6 +327,12 @@ ORDER BY constraint_name, column_name";
     private async Task<IReadOnlyList<TriggerNode>> GetTriggersByParentAsync(string parentName, CancellationToken ct)
     {
         var triggers = new List<TriggerNode>();
+
+        if (!await CatalogTableExistsAsync("triggers", ct))
+        {
+            return triggers;
+        }
+
         var escapedName = EscapeSqlLiteral(parentName);
 
         var possibleQueries = new[]
@@ -402,6 +422,59 @@ ORDER BY name"
         }
 
         return reader.GetValue(ordinal)?.ToString() ?? fallback;
+    }
+
+    private async Task<bool> CatalogTableExistsAsync(string tableName, CancellationToken ct)
+    {
+        var tableNames = await GetCatalogTableNamesAsync(ct);
+        return tableNames.Contains(tableName);
+    }
+
+    private async Task<HashSet<string>> GetCatalogTableNamesAsync(CancellationToken ct)
+    {
+        if (_catalogTableNames is not null)
+        {
+            return _catalogTableNames;
+        }
+
+        using var connection = _connectionFactory.CreateConnection();
+        await connection.OpenAsync(ct);
+
+        if (connection is not DecentDBConnection decentDbConnection)
+        {
+            Log.Logger.Error("Connection is not a DecentDBConnection, cannot access schema information");
+            throw new InvalidOperationException("Connection must be a DecentDBConnection to access schema information.");
+        }
+
+        var dataTable = decentDbConnection.GetSchema("Tables");
+        CacheCatalogTableNames(dataTable);
+        return _catalogTableNames ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private void CacheCatalogTableNames(DataTable dataTable)
+    {
+        if (_catalogTableNames is not null)
+        {
+            return;
+        }
+
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!dataTable.Columns.Contains("TABLE_NAME"))
+        {
+            _catalogTableNames = names;
+            return;
+        }
+
+        foreach (DataRow row in dataTable.Rows)
+        {
+            var name = row["TABLE_NAME"]?.ToString();
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                names.Add(name);
+            }
+        }
+
+        _catalogTableNames = names;
     }
 
     private static string EscapeSqlLiteral(string value) => value.Replace("'", "''", StringComparison.Ordinal);

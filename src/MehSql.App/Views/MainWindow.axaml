@@ -22,9 +22,6 @@
       <MenuItem Header="_File" Foreground="{StaticResource TextBrush}">
         <MenuItem Header="_New Database" InputGesture="Ctrl+N" Click="OnNewDatabaseClick"/>
         <MenuItem Header="_Open Database" InputGesture="Ctrl+O" Click="OnOpenDatabaseClick"/>
-        <MenuItem Header="Open _SQL File" InputGesture="Ctrl+Shift+O" Click="OnOpenSqlFileClick"/>
-        <MenuItem Header="_Save SQL" InputGesture="Ctrl+S" Click="OnSaveSqlFileClick"/>
-        <MenuItem Header="Save SQL _As..." InputGesture="Ctrl+Shift+S" Click="OnSaveSqlFileAsClick"/>
         <MenuItem Header="Open in _External Editor" Click="OnOpenInExternalEditorClick"/>
         <Separator/>
         <MenuItem Header="_Import Database..." Click="OnImportDatabaseClick"/>
@@ -43,19 +40,15 @@
       <MenuItem Header="_Edit" Foreground="{StaticResource TextBrush}">
         <MenuItem Header="_Find" InputGesture="Ctrl+F" Click="OnShowFindClick"/>
         <MenuItem Header="_Replace" InputGesture="Ctrl+H" Click="OnShowReplaceClick"/>
-        <MenuItem Header="_Format SQL" InputGesture="Ctrl+Shift+F" Click="OnFormatSqlClick"/>
         <Separator/>
         <MenuItem Header="_Preferences" InputGesture="Ctrl+," Click="OnPreferencesClick"/>
         <MenuItem Header="Toggle _Theme" InputGesture="Ctrl+Alt+T" Click="OnToggleThemeClick"/>
       </MenuItem>
 
       <MenuItem Header="_Query" Foreground="{StaticResource TextBrush}">
-        <MenuItem Header="_Run" InputGesture="Ctrl+Enter" Click="OnRunQueryClick"/>
-        <MenuItem Header="_Cancel" InputGesture="Escape" Command="{Binding CancelQueryCommand}"/>
         <MenuItem Header="_Explain" InputGesture="Ctrl+E" Click="OnExplainClick"/>
         <MenuItem Header="Explain _Analyze" InputGesture="Ctrl+Shift+E" Click="OnExplainAnalyzeClick"/>
         <Separator/>
-        <MenuItem Header="_New Query Tab" InputGesture="Ctrl+T" Command="{Binding NewQueryTabCommand}"/>
         <MenuItem Header="_Close Query Tab" InputGesture="Ctrl+W" Click="OnCloseCurrentTabClick"/>
       </MenuItem>
 
@@ -245,7 +238,7 @@
                     </Border>
 
                     <ScrollViewer Grid.Row="1" IsVisible="{Binding Results.ShowExecutionPlan}">
-                      <TextBlock Text="{Binding Results.ExecutionPlan.RawOutput}" FontFamily="Consolas, monospace" FontSize="11" Padding="8" TextWrapping="Wrap" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource TextBrush}"/>
+                      <TextBlock Text="{Binding Results.ExecutionPlanRawOutput}" FontFamily="Consolas, monospace" FontSize="11" Padding="8" TextWrapping="Wrap" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource TextBrush}"/>
                     </ScrollViewer>
 
                     <TextBlock Grid.Row="1" Text="Click 'Explain' or 'Explain Analyze' to see the query execution plan" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{StaticResource TextTertiaryBrush}" IsVisible="{Binding !Results.ShowExecutionPlan}"/>
@@ -286,25 +279,19 @@
               <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="24">
                 <StackPanel>
                   <TextBlock Text="DB Execution" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock Text="{Binding Results.Timings.DbExecutionTime.TotalMilliseconds, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
+                  <TextBlock Text="{Binding Results.DbExecutionDisplay}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
                 </StackPanel>
                 <StackPanel>
                   <TextBlock Text="Fetch Time" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock Text="{Binding Results.Timings.FetchTime.TotalMilliseconds, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
+                  <TextBlock Text="{Binding Results.FetchTimeDisplay}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
                 </StackPanel>
                 <StackPanel>
                   <TextBlock Text="UI Bind" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock Text="{Binding Results.Timings.UiBindTime.TotalMilliseconds, StringFormat='{}{0:F2} ms', FallbackValue='--'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
+                  <TextBlock Text="{Binding Results.UiBindDisplay}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
                 </StackPanel>
                 <StackPanel>
                   <TextBlock Text="Total" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                  <TextBlock FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}">
-                    <TextBlock.Text>
-                      <MultiBinding StringFormat="{}{0:F2} ms">
-                        <Binding Path="Results.Timings.TotalTime.TotalMilliseconds" FallbackValue="--"/>
-                      </MultiBinding>
-                    </TextBlock.Text>
-                  </TextBlock>
+                  <TextBlock Text="{Binding Results.TotalTimeDisplay}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextBrush}"/>
                 </StackPanel>
                 <StackPanel>
                   <TextBlock Text="Rows" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
@@ -314,16 +301,6 @@
 
               <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Right" Spacing="2">
                 <TextBlock Text="{Binding SchemaActionStatus}" Foreground="{StaticResource TextTertiaryBrush}" FontSize="11"/>
-                <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding Results.ExecutionPlan.PlanningTime, Converter={x:Static ObjectConverters.IsNotNull}}">
-                  <StackPanel>
-                    <TextBlock Text="Planning" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                    <TextBlock Text="{Binding Results.ExecutionPlan.PlanningTime, StringFormat='{}{0:F2} ms'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource PrimaryBrush}"/>
-                  </StackPanel>
-                  <StackPanel IsVisible="{Binding Results.ExecutionPlan.ExecutionTime, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <TextBlock Text="Execution" Foreground="{StaticResource TextTertiaryBrush}" FontSize="10"/>
-                    <TextBlock Text="{Binding Results.ExecutionPlan.ExecutionTime, StringFormat='{}{0:F2} ms'}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource PrimaryBrush}"/>
-                  </StackPanel>
-                </StackPanel>
               </StackPanel>
             </Grid>
           </Border>

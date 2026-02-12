@@ -63,7 +63,19 @@ public sealed class ResultsViewModel : ViewModelBase
     public QueryTimings? Timings
     {
         get => _timings;
-        private set => this.RaiseAndSetIfChanged(ref _timings, value);
+        private set
+        {
+            if (EqualityComparer<QueryTimings?>.Default.Equals(_timings, value))
+            {
+                return;
+            }
+
+            this.RaiseAndSetIfChanged(ref _timings, value);
+            this.RaisePropertyChanged(nameof(DbExecutionDisplay));
+            this.RaisePropertyChanged(nameof(FetchTimeDisplay));
+            this.RaisePropertyChanged(nameof(UiBindDisplay));
+            this.RaisePropertyChanged(nameof(TotalTimeDisplay));
+        }
     }
 
     private bool _isBusy;
@@ -84,7 +96,16 @@ public sealed class ResultsViewModel : ViewModelBase
     public QueryExecutionPlan? ExecutionPlan
     {
         get => _executionPlan;
-        private set => this.RaiseAndSetIfChanged(ref _executionPlan, value);
+        private set
+        {
+            if (EqualityComparer<QueryExecutionPlan?>.Default.Equals(_executionPlan, value))
+            {
+                return;
+            }
+
+            this.RaiseAndSetIfChanged(ref _executionPlan, value);
+            this.RaisePropertyChanged(nameof(ExecutionPlanRawOutput));
+        }
     }
 
     private bool _showExecutionPlan;
@@ -142,6 +163,20 @@ public sealed class ResultsViewModel : ViewModelBase
         get => _appliedDefaultLimit;
         private set => this.RaiseAndSetIfChanged(ref _appliedDefaultLimit, value);
     }
+
+    public string DbExecutionDisplay => FormatMilliseconds(Timings?.DbExecutionTime);
+
+    public string FetchTimeDisplay => Timings is null
+        ? "--"
+        : $"{Timings.FetchTime.TotalMilliseconds:F2} ms";
+
+    public string UiBindDisplay => FormatMilliseconds(Timings?.UiBindTime);
+
+    public string TotalTimeDisplay => Timings is null
+        ? "--"
+        : $"{Timings.TotalTime.TotalMilliseconds:F2} ms";
+
+    public string ExecutionPlanRawOutput => ExecutionPlan?.RawOutput ?? string.Empty;
 
     private static bool DetectOrdering(string sql)
     {
@@ -351,4 +386,11 @@ public sealed class ResultsViewModel : ViewModelBase
     }
 
     private QueryOptions CreateQueryOptions() => new(ApplyDefaultLimit: ApplyDefaultLimit);
+
+    private static string FormatMilliseconds(TimeSpan? value)
+    {
+        return value.HasValue
+            ? $"{value.Value.TotalMilliseconds:F2} ms"
+            : "--";
+    }
 }

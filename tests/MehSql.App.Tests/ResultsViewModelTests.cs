@@ -287,4 +287,43 @@ public sealed class ResultsViewModelTests
         await vm.RunAsync(CancellationToken.None);
         pager.VerifyAll();
     }
+
+    [Fact]
+    public void DisplayProperties_DefaultToPlaceholder_WhenNoTimingsOrExecutionPlan()
+    {
+        var pager = new Mock<IQueryPager>(MockBehavior.Loose);
+        var explainService = CreateMockExplainService();
+        var exportService = CreateMockExportService();
+        var vm = new ResultsViewModel(pager.Object, explainService.Object, exportService.Object);
+
+        Assert.Equal("--", vm.DbExecutionDisplay);
+        Assert.Equal("--", vm.FetchTimeDisplay);
+        Assert.Equal("--", vm.UiBindDisplay);
+        Assert.Equal("--", vm.TotalTimeDisplay);
+        Assert.Equal(string.Empty, vm.ExecutionPlanRawOutput);
+    }
+
+    [Fact]
+    public async Task DisplayProperties_ShowFormattedValues_AfterRun()
+    {
+        var pager = new Mock<IQueryPager>(MockBehavior.Strict);
+        var explainService = CreateMockExplainService();
+        var exportService = CreateMockExportService();
+
+        pager.Setup(p => p.ExecuteFirstPageAsync(It.IsAny<string>(), It.IsAny<QueryOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new QueryPage(
+                Columns: new[] { new ColumnInfo("id", "bigint") },
+                Rows: new List<IReadOnlyDictionary<string, object?>>(),
+                NextToken: null,
+                Timings: new QueryTimings(TimeSpan.FromMilliseconds(5), TimeSpan.FromMilliseconds(2), null)
+            ));
+
+        var vm = new ResultsViewModel(pager.Object, explainService.Object, exportService.Object);
+        await vm.RunAsync(CancellationToken.None);
+
+        Assert.Equal("5.00 ms", vm.DbExecutionDisplay);
+        Assert.Equal("2.00 ms", vm.FetchTimeDisplay);
+        Assert.Equal("--", vm.UiBindDisplay);
+        Assert.Equal("7.00 ms", vm.TotalTimeDisplay);
+    }
 }

@@ -63,11 +63,17 @@ public sealed class ExplainService : IExplainService
             };
         }
 
+        var (planningTime, executionTime) = analyze
+            ? ExplainOutputParser.ParseTimings(rawOutput)
+            : (null, null);
+
         // Return the raw text output — DecentDB returns plain text, not JSON
         return new QueryExecutionPlan
         {
             RawOutput = rawOutput,
-            IsAnalyzed = analyze
+            IsAnalyzed = analyze,
+            PlanningTime = planningTime,
+            ExecutionTime = executionTime
         };
     }
 }
