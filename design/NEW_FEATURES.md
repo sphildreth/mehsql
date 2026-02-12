@@ -16,6 +16,8 @@ Constraints / scope:
 - Keyboard shortcuts: run, cancel, explain, format, new tab, close tab.
 - SQL formatting (simple formatter; or "format selection" only).
 - "Open in external editor" (optional, fallback when text editing is limiting).
+- Find All References (jump to table/column usage).
+
 
 ### Execute + Results
 - Run selection vs run whole editor.
@@ -83,6 +85,7 @@ This means the "New Trigger" UX should generate and validate only the supported 
   - views
   - triggers (supported subset)
 - Where DecentDB cannot provide the original source SQL, synthesize DDL from introspection and label it as synthesized.
+- Versioning: clearly indicate when DDL is synthesized vs original source.
 - Current DecentDB introspection is limited (practical implication for DDL generation):
   - Available today: columns (name/type/not-null/unique/primary key) and index metadata (name/columns/unique/kind).
   - Likely missing / not reliably reconstructable: original column defaults, CHECK expressions, FK details, partial/expression index predicates, trigger bodies, and view definitions.
