@@ -143,17 +143,18 @@ public sealed class QueryExecutor : IQueryExecutor
         Log.Logger.Debug("Opening connection for page query execution");
         await connection.OpenAsync(cancellationToken);
 
-        // Add pagination if offset is specified
-        var paginatedSql = sql;
+        // Normalize a trailing terminator so appended paging clauses remain valid SQL.
+        var sqlForPaging = TrimTrailingTerminator(sql);
+        var paginatedSql = sqlForPaging;
         if (offset.HasValue)
         {
-            paginatedSql = $"{sql} LIMIT {options.PageSize} OFFSET {offset.Value}";
+            paginatedSql = $"{sqlForPaging} LIMIT {options.PageSize} OFFSET {offset.Value}";
             Log.Logger.Debug("Applied pagination with OFFSET: {Offset}, LIMIT: {Limit}", offset.Value, options.PageSize);
         }
-        else if (!sql.TrimEnd().EndsWith(";", StringComparison.OrdinalIgnoreCase))
+        else if (!ContainsLimitClause(sqlForPaging))
         {
             // Add limit for first page if not already present
-            paginatedSql = $"{sql} LIMIT {options.PageSize}";
+            paginatedSql = $"{sqlForPaging} LIMIT {options.PageSize}";
             Log.Logger.Debug("Applied initial LIMIT: {Limit} for first page", options.PageSize);
         }
 
@@ -217,5 +218,18 @@ public sealed class QueryExecutor : IQueryExecutor
         // In a production implementation, you might parse the SQL to extract the FROM clause
         // or use a different approach (e.g., separate count query with same WHERE clause)
         return -1;
+    }
+
+    private static bool ContainsLimitClause(string sql)
+    {
+        return sql.Contains("LIMIT", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string TrimTrailingTerminator(string sql)
+    {
+        var trimmed = sql.TrimEnd();
+        return trimmed.EndsWith(';')
+            ? trimmed[..^1].TrimEnd()
+            : trimmed;
     }
 }

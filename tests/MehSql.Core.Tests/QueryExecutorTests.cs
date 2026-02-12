@@ -115,6 +115,30 @@ public class QueryExecutorTests : IDisposable
     }
 
     [Fact]
+    public async Task ExecutePageAsync_WithSemicolonTerminatedSql_AppliesFirstPageLimit()
+    {
+        var executor = new QueryExecutor(_connectionFactory);
+        var options = new QueryOptions(PageSize: 2);
+
+        var firstPage = await executor.ExecutePageAsync("SELECT * FROM test_items ORDER BY id;", options, offset: null);
+
+        Assert.Equal(2, firstPage.Rows.Count);
+        Assert.Equal(1L, firstPage.Rows[0].Values["id"]);
+    }
+
+    [Fact]
+    public async Task ExecutePageAsync_WithSemicolonTerminatedSql_AppliesOffsetPaging()
+    {
+        var executor = new QueryExecutor(_connectionFactory);
+        var options = new QueryOptions(PageSize: 2);
+
+        var nextPage = await executor.ExecutePageAsync("SELECT * FROM test_items ORDER BY id;", options, offset: 2);
+
+        Assert.Equal(2, nextPage.Rows.Count);
+        Assert.Equal(3L, nextPage.Rows[0].Values["id"]);
+    }
+
+    [Fact]
     public async Task ExecuteQueryAsync_StreamsAllResults()
     {
         var executor = new QueryExecutor(_connectionFactory);

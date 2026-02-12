@@ -8,7 +8,7 @@
     <InternalsVisibleTo Include="MehSql.Core.Tests" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="DecentDB.MicroOrm" Version="1.0.1" />
+    <PackageReference Include="DecentDB.MicroOrm" Version="1.0.2" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.3" />
     <PackageReference Include="Serilog" Version="4.3.1" />
     <PackageReference Include="ZstdSharp.Port" Version="0.8.7" />

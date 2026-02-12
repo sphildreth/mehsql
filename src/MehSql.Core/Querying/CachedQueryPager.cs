@@ -121,7 +121,7 @@ public sealed class CachedQueryPager : IQueryPager
 
     private static string BuildCacheKey(string sql, int offset)
     {
-        return $"{sql.GetHashCode(StringComparison.Ordinal)}:{offset}";
+        return $"{offset}:{sql.Length}:{sql}";
     }
 
     private static bool TryParseOffset(string token, out int offset)

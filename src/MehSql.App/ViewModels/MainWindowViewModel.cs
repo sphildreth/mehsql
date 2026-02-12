@@ -45,7 +45,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         CancelQueryCommand = ReactiveCommand.Create(CancelQuery);
 
         // Initialize child view models
-        var queryPager = new QueryPager(connectionFactory);
+        var queryPager = CreateQueryPager(connectionFactory);
         var explainService = new ExplainService(connectionFactory);
         var exportService = new ExportService();
         Results = new ResultsViewModel(queryPager, explainService, exportService);
@@ -211,7 +211,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             Log.Logger.Information("Updated CurrentDatabasePath to: {FilePath}", filePath);
 
             // Reinitialize view models with new connection
-            var queryPager = new QueryPager(newFactory);
+            var queryPager = CreateQueryPager(newFactory);
             var explainService = new ExplainService(newFactory);
             var exportService = new ExportService();
             var schemaService = new SchemaService(newFactory); // Create new schema service with new connection
@@ -277,7 +277,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             Log.Logger.Information("Updated CurrentDatabasePath to: {FilePath}", filePath);
 
             // Reinitialize view models with new connection
-            var queryPager = new QueryPager(newFactory);
+            var queryPager = CreateQueryPager(newFactory);
             var explainService = new ExplainService(newFactory);
             var exportService = new ExportService();
             var schemaService = new SchemaService(newFactory); // Create new schema service with new connection
@@ -334,5 +334,11 @@ public sealed class MainWindowViewModel : ViewModelBase
         var sql = $"SELECT * FROM \"{tableName}\" LIMIT 1000;";
         SqlText = sql;
         Log.Logger.Information("Populated SQL Editor with SELECT TOP 1000 query for table: {TableName}", tableName);
+    }
+
+    private static IQueryPager CreateQueryPager(IConnectionFactory connectionFactory)
+    {
+        var options = new QueryOptions();
+        return new CachedQueryPager(new QueryPager(connectionFactory), options.MaxCachedPages);
     }
 }
