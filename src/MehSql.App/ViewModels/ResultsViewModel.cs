@@ -334,6 +334,8 @@ public sealed class ResultsViewModel : ViewModelBase
         }
     }
 
+    public string ExplainOutputToCopy => ExecutionPlan?.RawOutput ?? string.Empty;
+
     private async IAsyncEnumerable<QueryPage> GetAllPagesAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
         // First page (already loaded)

@@ -232,13 +232,35 @@
 
                 <Border Grid.Row="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
                   <Grid RowDefinitions="Auto,*">
-                    <Border Grid.Row="0" Background="{DynamicResource ErrorBrush}" BorderBrush="{DynamicResource ErrorBrush}" BorderThickness="0,0,0,1" Padding="8" IsVisible="{Binding Results.ExecutionPlanError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <Border Grid.Row="0" Background="{DynamicResource ErrorBrush}" BorderBrush="{DynamicResource ErrorBrush}" BorderThickness="0,0,0,1" Padding="8" IsVisible="{Binding Results.ExecutionPlanError, Converter={x:Static ObjectConverters.IsNotNull}}">
                       <TextBlock Text="{Binding Results.ExecutionPlanError}" TextWrapping="Wrap" Foreground="White"/>
                     </Border>
 
-                    <ScrollViewer Grid.Row="1" IsVisible="{Binding Results.ShowExecutionPlan}">
-                      <TextBlock Text="{Binding Results.ExecutionPlanRawOutput}" FontFamily="Consolas, monospace" FontSize="11" Padding="8" TextWrapping="Wrap" Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}"/>
-                    </ScrollViewer>
+                    <Grid Grid.Row="1" IsVisible="{Binding Results.ShowExecutionPlan}">
+                      <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                      </Grid.RowDefinitions>
+                      <Border Grid.Row="0" Background="{DynamicResource SurfaceLightBrush}" Padding="4" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                        <StackPanel Orientation="Horizontal">
+                          <Button Content="Copy Output" Click="OnCopyExplainOutputClick" Padding="8,2" FontSize="11" Margin="0,0,4,0"/>
+                          <TextBlock Text="Select and copy text from the output below" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                        </StackPanel>
+                      </Border>
+                      <ScrollViewer Grid.Row="1" 
+                                    Background="{DynamicResource SurfaceBrush}" 
+                                    BorderThickness="0">
+                        <TextBox Text="{Binding Results.ExecutionPlanRawOutput}" 
+                                 FontFamily="Consolas, monospace" 
+                                 FontSize="11" 
+                                 Padding="8" 
+                                 TextWrapping="Wrap" 
+                                 Background="{DynamicResource SurfaceBrush}" 
+                                 Foreground="{DynamicResource TextBrush}"
+                                 IsReadOnly="True"
+                                 BorderThickness="0"/>
+                      </ScrollViewer>
+                    </Grid>
 
                     <TextBlock Grid.Row="1" Text="Click 'Explain' or 'Explain Analyze' to see the query execution plan" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding !Results.ShowExecutionPlan}"/>
                   </Grid>

@@ -807,6 +807,18 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void OnCopyExplainOutputClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            var output = vm.Results.ExplainOutputToCopy;
+            if (!string.IsNullOrEmpty(output))
+            {
+                await CopyToClipboardAsync(output);
+            }
+        }
+    }
+
     private void OnShowFindClick(object? sender, RoutedEventArgs e)
     {
         ShowFindPanel(showReplace: false);
